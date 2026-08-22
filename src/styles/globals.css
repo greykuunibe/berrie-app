@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* DESIGN SYSTEM */
+
+@theme {
+  /* BRAND */
+  --color-brand: #3d89f1;
+
+  /* SURFACE */
+  --color-surface-0: #f5f5f4;
+  --color-surface-1: #fdfdfd;
+  --color-surface-2: #eae8e7;
+
+  /* TEXT */
+  --color-text-primary: #202020;
+  --color-text-muted: #838383;
+  --color-text-inverted: #ffffff;
+  --color-text-brand: #3d89f1;
+
+  /* BORDERS */
+  --color-border-gray-0: #fafafa;
+  --color-border-gray-1: #e7e5e4;
+  --color-border-gray-2: #eae8e7;
+  --color-border-brand: #3ea6f1;
+
+  /* FONTS */
+  --font-dm-sans: "DM Sans", sans-serif;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: var(--font-dm-sans);
+  }
+}
+
+/* LAYOUTDEBUGGING */
+
+.show {
+  border: 1px solid red;
+}
+
+.show-1 {
+  border: 1px solid blue;
+}
+
+/* WINDOW TITLE BAR */
+
+.window-titlebar {
+  background-color: var(--color-surface-0);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.window-titlebar__drag-region {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.window-titlebar__controls {
+  display: flex;
+  height: 100%;
+}
+
+.window-titlebar__controls button {
+  width: 46px;
+  height: 100%;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.window-titlebar__controls .control-button:hover {
+  background-color: var(--color-surface-2);
+}
+
+.window-titlebar__controls .control-button-close:hover {
+  background-color: #de061a;
+  color: var(--color-text-inverted);
+}
+
+body {
+  background-color: var(--color-surface-0);
+  color: var(--color-text-primary);
+}
+
+.element-box-shadow {
+  box-shadow:
+    0px 2px 4px rgba(0, 0, 1, 0.04),
+    0px 0px 0px rgba(0, 0, 2, 0.06);
+  transition: box-shadow 0.2s ease;
+}
+.card-shadow {
+  box-shadow:
+    0px 2px 4px rgba(0, 0, 1, 0.02),
+    0px 0px 0px rgba(0, 0, 2, 0.03);
+  transition: box-shadow 0.2s ease;
+}
+
+.element-box-shadow:hover {
+  box-shadow:
+    0px 2px 4px rgba(0, 0, 1, 0.05),
+    0px 0px 0px rgba(0, 0, 2, 0.07);
+  transition: box-shadow 0.2s ease;
+}
+
+.squircle {
+  corner-shape: superellipse(0.75);
+}
+
+.brand-gradient {
+  background: linear-gradient(169.59deg, #1c8af7 7.33%, #3486d3 92.24%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-border-gray-1);
+  outline-offset: 2px;
+}
+
+button {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
