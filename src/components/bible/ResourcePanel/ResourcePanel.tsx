@@ -5,9 +5,11 @@ import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading, CommentarySha
 import { Icon } from "@components/primitives/Icons";
 import { Input } from "@components/primitives/Form/Input";
 import { Commentary, Lexicon, CrossRef, Map as MapIcon, OpenPanel, Search, Account, Info, Clock } from "@Icons";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useResourcesStore } from "@/stores/resources.store";
 import { useBibleStore } from "@/stores/bible.store";
-import { fetchChapters, fetchVerses } from "@/lib/bible.service";
+import { fetchChapters, fetchVerses, fetchCrossReferencesForChapter } from "@/lib/bible.service";
+import type { CrossReference } from "@/types";
 import type { Resource } from "@/types";
 
 // Allowed tags and attributes for commentary HTML
@@ -358,12 +360,12 @@ function VerseRefPopover({
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
-type PanelTab = "all" | "commentary" | "lexicon" | "concordance" | "maps";
+type PanelTab = "commentary" | "concordance" | "maps";
 
 const TABS: { value: PanelTab; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
   { value: "commentary",  label: "Commentary",  icon: Commentary },
-  { value: "lexicon",     label: "Lexicon",     icon: Lexicon   },
-  { value: "concordance", label: "Concordance", icon: CrossRef  },
+  { value: "concordance", label: "Cross-refs",  icon: CrossRef  },
+  { value: "maps",        label: "Maps",        icon: MapIcon   },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -737,6 +739,113 @@ function LexiconCard({
   );
 }
 
+// ── Concordance (cross-references) content ───────────────────────────────────
+
+function ConcordanceContent() {
+  const currentBook     = useBibleStore(s => s.currentBook);
+  const books           = useBibleStore(s => s.books);
+  const activeTranslation = useBibleStore(s => s.activeTranslation);
+  const [searchParams]  = useSearchParams();
+  const navigate        = useNavigate();
+  const chapterNum      = parseInt(searchParams.get("ch") ?? "1");
+
+  const [refs, setRefs]         = useState<CrossReference[]>([]);
+  const [verseTexts, setVerseTexts] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!currentBook) return;
+    setRefs([]);
+    setVerseTexts({});
+    setIsLoading(true);
+    fetchCrossReferencesForChapter(currentBook.id, chapterNum)
+      .then(data => { setRefs(data); setIsLoading(false); })
+      .catch(() => setIsLoading(false));
+  }, [currentBook?.id, chapterNum]);
+
+  // Lazy-fetch verse text for target references
+  useEffect(() => {
+    if (!refs.length || !activeTranslation) return;
+    // Collect unique book+chapter combos
+    const targets = [...new Map(refs.map(r => [`${r.to_book_id}:${r.to_chapter}`, r])).values()];
+    targets.forEach(async ref => {
+      try {
+        const chaps = await fetchChapters(ref.to_book_id);
+        const ch = chaps.find(c => c.number === ref.to_chapter);
+        if (!ch) return;
+        const verses = await fetchVerses(ch.id, activeTranslation.id);
+        verses.forEach(v => {
+          const key = `${ref.to_book_id}:${ref.to_chapter}:${v.number}`;
+          setVerseTexts(prev => ({ ...prev, [key]: v.text }));
+        });
+      } catch { /* best-effort */ }
+    });
+  }, [refs.length, activeTranslation?.id]);
+
+  if (!currentBook) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16">
+        <EmptyState icon={CrossRef} title="No book open" description="Open a book in the reader to see cross-references" />
+      </div>
+    );
+  }
+
+  if (isLoading) return <Loading />;
+
+  if (!refs.length) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16">
+        <EmptyState icon={CrossRef} title="No cross-references" description={`No cross-references found for ${currentBook.name} chapter ${chapterNum}`} />
+      </div>
+    );
+  }
+
+  // Group by source verse
+  const byVerse = refs.reduce<Record<number, CrossReference[]>>((acc, r) => {
+    (acc[r.from_verse] ??= []).push(r);
+    return acc;
+  }, {});
+
+  return (
+    <div className="flex flex-col gap-6">
+      {Object.entries(byVerse)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([verseNum, verseRefs]) => (
+          <div key={verseNum}>
+            <p className="text-base font-semibold text-text-primary mb-2">
+              Verse {verseNum}
+            </p>
+            <div className="flex flex-col gap-3">
+              {verseRefs.map(ref => {
+                const targetBook = books.find(b => b.id === ref.to_book_id);
+                const range = ref.to_verse_end !== ref.to_verse_start
+                  ? `${ref.to_verse_start}–${ref.to_verse_end}`
+                  : `${ref.to_verse_start}`;
+                const label = targetBook
+                  ? `${targetBook.abbreviation} ${ref.to_chapter}:${range}`
+                  : `${ref.to_chapter}:${range}`;
+                const verseText = verseTexts[`${ref.to_book_id}:${ref.to_chapter}:${ref.to_verse_start}`];
+                return (
+                  <button
+                    key={ref.id}
+                    type="button"
+                    className="text-left group"
+                    onClick={() => navigate(`/app/reader/${ref.to_book_id}?ch=${ref.to_chapter}&v=${ref.to_verse_start}`)}
+                  >
+                    <p className="text-sm font-semibold text-text-brand group-hover:underline mb-0.5">{label}</p>
+                    {verseText && (
+                      <p className="text-sm text-text-muted leading-relaxed line-clamp-2">{verseText}</p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+}
+
 // ── ResourcePanel ─────────────────────────────────────────────────────────────
 
 export interface ResourcePanelProps {
@@ -764,7 +873,6 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
 
   const byType = {
     commentary:  resources.filter(r => r.type === "commentary"),
-    lexicon:     resources.filter(r => r.type === "lexicon"),
     concordance: resources.filter(r => r.type === "concordance"),
     maps:        resources.filter(r => r.type === "maps"),
   };
@@ -844,21 +952,7 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
             : <CommentaryContent hasCommentaryResources={byType.commentary.length > 0} />
         )}
 
-        {activeTab === "lexicon" && (
-          isLoadingResources
-            ? <Loading />
-            : <LexiconContent hasLexiconResources={byType.lexicon.length > 0} />
-        )}
-
-        {activeTab === "concordance" && (
-          <div className="flex flex-1 items-center justify-center py-16">
-            <EmptyState
-              icon={CrossRef}
-              title="Cross-references"
-              description="Select a verse to see related passages"
-            />
-          </div>
-        )}
+        {activeTab === "concordance" && <ConcordanceContent />}
 
         {activeTab === "maps" && (
           <div className="flex flex-1 items-center justify-center py-16">

@@ -120,7 +120,7 @@ export function CVSelector({
           {title}
         </ButtonTrigger>
         {open && (
-          <div className="absolute top-full right-0 mt-2 z-10">
+          <div className="absolute bottom-full right-0 mb-2 z-10">
             <div className={cardClass}>
               {!plain && <span className={v.title}>{title}</span>}
               {grid}

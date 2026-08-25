@@ -228,8 +228,8 @@ export function Reader() {
     // Reader owns its own scroll — -mx-4 cancels AppLayout main's px-4 so
     // absolute children anchor to the true card edge, not the padded content box.
     <div className="relative h-full overflow-hidden -mx-4">
-      {/* Chapter TOC — absolute within the white card, top-right */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Chapter TOC — absolute within the white card, bottom-right */}
+      <div className="absolute bottom-4 right-4 z-10">
         <CVSelector
           title="Chapters"
           variant="md"

@@ -82,6 +82,23 @@ export async function fetchVersesByRef(
   return fetchVerses(chapter.id, translationId);
 }
 
+export async function fetchCrossReferencesForChapter(
+  bookId: number,
+  chapter: number,
+  minVotes = 3
+): Promise<CrossReference[]> {
+  const { data, error } = await supabase
+    .from("cross_references")
+    .select("*")
+    .eq("from_book_id", bookId)
+    .eq("from_chapter", chapter)
+    .gte("votes", minVotes)
+    .order("from_verse")
+    .order("votes", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function fetchCrossReferences(
   bookId: number,
   chapter: number,
