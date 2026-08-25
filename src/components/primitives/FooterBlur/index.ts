@@ -1,0 +1,1 @@
+export { FooterBlur } from "./FooterBlur";

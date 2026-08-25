@@ -4,7 +4,7 @@ export type IconComponent = ComponentType<
   SVGProps<SVGSVGElement> & { size?: number | string }
 >;
 
-export type IconColor = "muted" | "primary" | "white" | "brand";
+export type IconColor = "muted" | "primary" | "white" | "brand" | "danger";
 
 export interface IconProps extends SVGProps<SVGSVGElement> {
   icon: IconComponent;
@@ -17,6 +17,7 @@ const iconColorStyles: Record<IconColor, string> = {
   primary: "text-text-primary",
   white: "text-text-inverted",
   brand: "text-text-brand",
+  danger: "text-red-500",
 };
 
 export function Icon({

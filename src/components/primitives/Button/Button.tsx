@@ -4,7 +4,7 @@ import { Icon, Loader, Check, XMark } from "@Icons";
 import { AnimatePresence, motion } from "motion/react";
 
 const baseStyle =
-  "inline-flex items-center cursor-pointer justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-colors";
+  "inline-flex items-center cursor-pointer justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-[color,transform] ";
 
 const variantStyles = {
   primary:
@@ -12,7 +12,7 @@ const variantStyles = {
   secondary: "bg-surface-2 border border-border-gray-2 text-text-primary",
   brand:
     "brand-gradient border border-border-brand text-white element-box-shadow",
-  ghost: "bg-transparent border border-border-gray-0 text-text-primary",
+  ghost: "bg-transparent border border-transparent text-text-primary",
 };
 
 const stateIcons = {
@@ -37,7 +37,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const sizeStyles = {
-    sm: iconButton ? "h-8 w-8 p-0" : "h-8 w-fit min-w-22 px-3",
+    sm: iconButton ? "h-9 w-9 p-0" : "h-9 w-fit min-w-22 px-3",
     md: iconButton ? "h-10 w-10 p-0" : "h-10 w-fit min-w-22.5 px-3",
   };
 

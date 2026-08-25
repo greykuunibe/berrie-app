@@ -10,6 +10,8 @@ interface ComponentShowcaseProps {
   children: ReactNode;
   /** When provided, a reset button is shown in the footer. */
   onReset?: () => void;
+  /** Remove content padding so children fill the card edge-to-edge. */
+  flush?: boolean;
 }
 
 export function ComponentShowcase({
@@ -17,6 +19,7 @@ export function ComponentShowcase({
   id,
   children,
   onReset,
+  flush,
 }: ComponentShowcaseProps) {
   return (
     <section
@@ -25,7 +28,7 @@ export function ComponentShowcase({
     >
       {/* Content area */}
       <div className="scroll-mt-16 card-shadow mx-auto w-full overflow-hidden rounded-xl element-box-shadow border border-border-gray-1 bg-white">
-        <div className="flex flex-col items-center space-y-6 p-6">{children}</div>
+        <div className={flush ? "" : "flex flex-col items-center space-y-6 p-6"}>{children}</div>
         {/* Footer bar */}
         <div className="flex items-center justify-between gap-2 border-t border-border-gray-1 bg-surface-1 px-4 py-4">
           <span className="text-md font-medium text-text-muted">{title}</span>

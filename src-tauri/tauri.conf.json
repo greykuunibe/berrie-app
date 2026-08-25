@@ -16,6 +16,8 @@
         "title": "Berrie",
         "width": 1200,
         "height": 800,
+        "minWidth": 1100,
+        "minHeight": 700,
         "center": true,
         "fullscreen": false,
         "maximized": false,
