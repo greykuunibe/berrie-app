@@ -1,10 +1,10 @@
-import { useNavigate } from "react-router-dom";
 import { Button, EmptyState, ButtonTrigger, FooterBlur } from "@components/primitives";
 import { Menu, MenuItem } from "@components/primitives/Menu";
 import { FeatureCover } from "@components/primitives";
 import { Bible } from "@Icons";
 import { useBible } from "@/hooks/useBible";
 import { useUIStore } from "@/stores/ui.store";
+import { useTabsStore } from "@/stores/tabs.store";
 import { useState } from "react";
 import type { Testament, BookCategory } from "@/types";
 
@@ -31,7 +31,7 @@ const TESTAMENTS: Array<{ label: string; value: Testament }> = [
 
 export function BibleLibrary() {
   const { books, isLoadingBooks, selectBook, loadChapters } = useBible();
-  const navigate = useNavigate();
+  const openTab = useTabsStore((s) => s.openTab);
   const testament = useUIStore((s) => s.bibleLibraryTestament);
   const activeCategory = useUIStore((s) => s.bibleLibraryCategory);
   const setTestament = useUIStore((s) => s.setBibleLibraryTestament);
@@ -130,9 +130,11 @@ export function BibleLibrary() {
                 onClick={() => {
                   selectBook(book);
                   loadChapters(book.id);
-                  const saved = localStorage.getItem(`berrie-pos-${book.id}`);
-                  const ch = saved ?? "1";
-                  navigate(`/app/reader/${book.id}?ch=${ch}&v=1`);
+                  openTab({
+                    type: "reader",
+                    label: book.name,
+                    params: { bookId: String(book.id) },
+                  });
                 }}
               />
             ))}

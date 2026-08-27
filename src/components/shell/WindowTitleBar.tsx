@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MinusIcon, Square2StackIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Button, ToggleGroup, type ToggleGroupProps } from "@components/primitives";
+import { Button } from "@components/primitives";
 import { Icon } from "@components/primitives/Icons";
 import { Profile, ChevronDown, ChevronUp, ChevronLeft, Download, Mail, Bible, SignOut } from "@Icons";
 import { useUserInitial } from "@/hooks/useCurrentUser";
@@ -69,13 +69,13 @@ function ProfilePill() {
 
 export interface WindowTitleBarProps {
   title?: string;
-  toggle?: ToggleGroupProps;
+  tabBar?: ReactNode;
   rightActions?: ReactNode;
   /** Content rendered absolutely centered in the titlebar. */
   centerActions?: ReactNode;
 }
 
-export function WindowTitleBar({ title = "Berrie", toggle, rightActions, centerActions }: WindowTitleBarProps) {
+export function WindowTitleBar({ title = "Berrie", tabBar, rightActions, centerActions }: WindowTitleBarProps) {
   const minimize = () => getCurrentWindow().minimize();
   const toggleMaximize = () => getCurrentWindow().toggleMaximize();
   const close = () => getCurrentWindow().close();
@@ -86,9 +86,9 @@ export function WindowTitleBar({ title = "Berrie", toggle, rightActions, centerA
   const leftSection = (
     <div className="flex items-center gap-4">
       <h1 className="text-xl font-medium text-text-primary leading-none">{title}</h1>
-      {toggle && (
+      {tabBar && (
         <div onMouseDown={(e) => e.stopPropagation()}>
-          <ToggleGroup {...toggle} />
+          {tabBar}
         </div>
       )}
     </div>
@@ -112,9 +112,9 @@ export function WindowTitleBar({ title = "Berrie", toggle, rightActions, centerA
           >
             {title}
           </h1>
-          {toggle && (
+          {tabBar && (
             <div onMouseDown={(e) => e.stopPropagation()}>
-              <ToggleGroup {...toggle} />
+              {tabBar}
             </div>
           )}
         </div>

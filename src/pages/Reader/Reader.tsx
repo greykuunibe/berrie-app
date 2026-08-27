@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useBible } from "@/hooks/useBible";
 import { fetchVerses } from "@/lib/bible.service";
 import { CVSelector, ChapterBlock } from "@components/bible";
 import { FeatureCover, FooterBlur, BookShader } from "@components/primitives";
 import { useResourcesStore } from "@/stores/resources.store";
+import { useTabsStore } from "@/stores/tabs.store";
 import type { Chapter, Verse } from "@/types";
 
 type ChapterVerses = { chapter: Chapter; verses: Verse[] };
@@ -13,13 +13,17 @@ function posKey(bookId: string) {
   return `berrie-pos-${bookId}`;
 }
 
-export function Reader() {
-  const { bookId } = useParams<{ bookId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+interface ReaderProps {
+  tabId?: string;
+  bookId?: string;
+}
 
-  // ch defaults to "1" if not in URL (fresh open, no saved pos)
-  const chParam = searchParams.get("ch") ?? "1";
+export function Reader({ tabId, bookId }: ReaderProps) {
+  const savedChapter = bookId ? localStorage.getItem(`berrie-pos-${bookId}`) : null;
+  const chParam = savedChapter ?? "1";
+
+  const updateTabParams = useTabsStore((s) => s.updateTabParams);
+  const openTab = useTabsStore((s) => s.openTab);
 
   const { books, chapters, currentBook, activeTranslation, selectBook } =
     useBible();
@@ -149,12 +153,11 @@ export function Reader() {
     };
   }, [chapters.length, activeTranslation?.id]);
 
-  // Persist active chapter to localStorage as user scrolls
+  // Persist active chapter and sync to tab params as user scrolls
   useEffect(() => {
     if (!bookId || !activeChapter) return;
     localStorage.setItem(posKey(bookId), String(activeChapter));
-    // Keep URL in sync without pushing a new history entry
-    setSearchParams({ ch: String(activeChapter), v: "1" }, { replace: true });
+    if (tabId) updateTabParams(tabId, { chapter: String(activeChapter) });
   }, [activeChapter]);
 
   // IntersectionObserver — track topmost visible chapter
@@ -202,11 +205,11 @@ export function Reader() {
       if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === "ArrowLeft") {
         e.preventDefault();
         const prev = books.find((b) => b.book_order === book.book_order - 1);
-        if (prev) navigate(`/app/reader/${prev.id}?ch=1&v=1`);
+        if (prev) openTab({ type: "reader", label: prev.name, params: { bookId: String(prev.id) } }, { replace: true });
       } else if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === "ArrowRight") {
         e.preventDefault();
         const next = books.find((b) => b.book_order === book.book_order + 1);
-        if (next) navigate(`/app/reader/${next.id}?ch=1&v=1`);
+        if (next) openTab({ type: "reader", label: next.name, params: { bookId: String(next.id) } }, { replace: true });
       } else if (e.shiftKey && e.key === "ArrowDown") {
         e.preventDefault();
         const idx = chapters.findIndex((c) => c.number === activeChapter);
@@ -219,7 +222,7 @@ export function Reader() {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [books, book, chapters, activeChapter, navigate]);
+  }, [books, book, chapters, activeChapter, openTab]);
 
   if (!book) return null;
 

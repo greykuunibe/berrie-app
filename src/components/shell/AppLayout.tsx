@@ -1,14 +1,19 @@
-import { useRef, useState } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { WindowTitleBar } from "./WindowTitleBar";
 import { ReaderBookSelectionMenu, ResourcePanel } from "@components/bible";
 import { Button, ButtonTrigger, ResourceCard } from "@components/primitives";
 import { MenuItem } from "@components/primitives/Menu";
-import { Bible, Search, Notes, ChevronLeft, Resources } from "@Icons";
+import { Menu } from "@components/primitives/Menu";
+import { Bible, Search, Resources, XMark, Notes as NotesIcon } from "@Icons";
 import { useBibleStore } from "@/stores/bible.store";
 import { useResourcesStore } from "@/stores/resources.store";
+import { useTabsStore } from "@/stores/tabs.store";
+import { BibleLibrary } from "@/pages/BibleLibrary";
+import { Notes } from "@/pages/Notes";
+import { Reader } from "@/pages/Reader";
+import type { Tab, TabDescriptor } from "@/types/tabs";
 
 // ── Translation picker ────────────────────────────────────────────────────────
 
@@ -28,7 +33,6 @@ function TranslationMenu() {
 
   const { localTranslationIds, downloadTranslation, removeTranslation } = useResourcesStore();
 
-  // Active translation always first
   const sorted = [
     ...translations.filter((t) => t.id === activeTranslation?.id),
     ...translations.filter((t) => t.id !== activeTranslation?.id),
@@ -72,10 +76,7 @@ function TranslationMenu() {
 
       {open && createPortal(
         <>
-          {/* Backdrop — closes everything */}
           <div className="fixed inset-0 z-998" onClick={closeAll} />
-
-          {/* Primary panel */}
           <div
             ref={panelRef}
             className="fixed z-999 flex flex-col p-1 gap-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-85"
@@ -98,8 +99,6 @@ function TranslationMenu() {
               <MenuItem label="More..." onClick={handleMore} />
             )}
           </div>
-
-          {/* More panel — separate floating menu with remaining translations */}
           {moreOpen && (
             <div
               className="fixed z-999 flex flex-col p-1 gap-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-85"
@@ -127,40 +126,139 @@ function TranslationMenu() {
   );
 }
 
-function useTitleBarConfig(onToggleResources: () => void) {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const currentBook = useBibleStore((s) => s.currentBook);
+// ── New tab menu ──────────────────────────────────────────────────────────────
 
-  const mainToggle = {
-    options: [
-      { icon: Bible, label: "Bible", value: "bible" },
-      { icon: Notes, label: "Notes", value: "notes" },
-    ],
-    value: pathname.startsWith("/app/notes") ? "notes" : "bible",
-    onChange: (v: string) => navigate(v === "notes" ? "/app/notes" : "/app"),
-  };
+function NewTabMenu({ onSelect }: { onSelect: (descriptor: TabDescriptor) => void }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const anchorRef = useRef<HTMLButtonElement>(null);
+
+  function handleToggle() {
+    if (!open && anchorRef.current) {
+      const r = anchorRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen((v) => !v);
+  }
+
+  function pick(descriptor: TabDescriptor) {
+    onSelect(descriptor);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={anchorRef}
+        className="w-6 h-6 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-2 transition-colors text-sm leading-none"
+        onClick={handleToggle}
+        aria-label="New tab"
+      >
+        +
+      </button>
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-998" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-999 flex flex-col p-1 gap-0.5 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-44"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            <MenuItem
+              icon={Bible}
+              label="Bible Library"
+              onClick={() => pick({ type: "bible-library", label: "Library", params: {} })}
+            />
+            <MenuItem
+              icon={NotesIcon}
+              label="Notes"
+              onClick={() => pick({ type: "notes-list", label: "Notes", params: {} })}
+            />
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ── Tab bar ───────────────────────────────────────────────────────────────────
+
+function TabBar() {
+  const { tabs, activeTabId, activateTab, closeTab, openInNewTab } = useTabsStore();
+
+  return (
+    <div className="flex items-center gap-1">
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTabId;
+        return (
+          <div
+            key={tab.id}
+            className={`group flex items-center gap-1.5 px-2.5 h-7 rounded-lg cursor-pointer select-none transition-colors ${
+              isActive
+                ? "bg-surface-2 text-text-primary"
+                : "text-text-muted hover:bg-surface-2/60 hover:text-text-primary"
+            }`}
+            onClick={() => activateTab(tab.id)}
+          >
+            <span className="text-sm font-medium max-w-[110px] truncate leading-none">
+              {tab.label}
+            </span>
+            {tabs.length > 1 && (
+              <button
+                className="leading-none opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-primary transition-opacity"
+                onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                aria-label={`Close ${tab.label}`}
+              >
+                <span className="text-xs">×</span>
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <NewTabMenu onSelect={(d) => openInNewTab(d)} />
+    </div>
+  );
+}
+
+// ── Tab content renderer ──────────────────────────────────────────────────────
+
+function TabContentRenderer({ tab }: { tab: Tab }) {
+  switch (tab.type) {
+    case "bible-library":
+      return <BibleLibrary />;
+    case "reader":
+      return <Reader tabId={tab.id} bookId={tab.params.bookId} />;
+    case "notes-list":
+    case "note":
+      return <Notes />;
+    default:
+      return null;
+  }
+}
+
+// ── Title bar config ──────────────────────────────────────────────────────────
+
+function useTitleBarConfig(activeTab: Tab | undefined, onToggleResources: () => void): {
+  centerActions?: ReactNode;
+  rightActions?: ReactNode;
+} {
+  const currentBook = useBibleStore((s) => s.currentBook);
+  const activeTabChapter = activeTab?.params.chapter ?? "1";
+  const activeTabVerse = activeTab?.params.verse ?? null;
 
   const resourcesBtn = (
     <Button variant="primary" size="sm" icon={Resources} iconButton onClick={onToggleResources} />
   );
 
-  if (pathname.startsWith("/app/reader/")) {
-    const chParam = searchParams.get("ch");
-    const vParam = searchParams.get("v");
-
+  if (activeTab?.type === "reader") {
     return {
-      title: "Bible",
-      toggle: mainToggle,
-      onBack: undefined,
       centerActions: (
         <>
           <TranslationMenu />
           <ReaderBookSelectionMenu
             book={currentBook ?? undefined}
-            chParam={chParam ?? "1"}
-            vParam={vParam}
+            chParam={activeTabChapter}
+            vParam={activeTabVerse}
           />
         </>
       ),
@@ -173,57 +271,85 @@ function useTitleBarConfig(onToggleResources: () => void) {
     };
   }
 
-  if (pathname.startsWith("/app/settings")) {
-    return { title: "Settings", toggle: mainToggle, rightActions: undefined, onBack: undefined, centerActions: undefined };
+  if (activeTab?.type === "notes-list" || activeTab?.type === "note") {
+    return {
+      rightActions: (
+        <Button variant="primary" size="sm" icon={Search} iconButton />
+      ),
+    };
   }
 
+  // bible-library or fallback
   return {
-    title: pathname.startsWith("/app/notes") ? "Notes" : "Bible",
-    toggle: mainToggle,
-    onBack: undefined,
     rightActions: (
       <>
         <Button variant="primary" size="sm" icon={Search} iconButton />
-        {!pathname.startsWith("/app/notes") && resourcesBtn}
+        {resourcesBtn}
       </>
     ),
   };
 }
 
+// ── Side pane ─────────────────────────────────────────────────────────────────
+
+function SidePane({ tab, onClose }: { tab: Tab; onClose: () => void }) {
+  return (
+    <div className="flex flex-col h-full border-l border-border-gray-1">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-gray-1 shrink-0">
+        <span className="text-sm font-medium text-text-primary truncate max-w-[160px]">
+          {tab.label}
+        </span>
+        <Button variant="primary" size="sm" icon={XMark} iconButton onClick={onClose} />
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <TabContentRenderer tab={tab} />
+      </div>
+    </div>
+  );
+}
+
+// ── AppLayout ─────────────────────────────────────────────────────────────────
+
 export function AppLayout() {
   const { isPanelOpen, togglePanel, setPanelOpen } = useResourcesStore();
-  const config = useTitleBarConfig(togglePanel);
+  const { tabs, activeTabId, sideTabId, closeSide } = useTabsStore();
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+  const sideTab = sideTabId ? tabs.find((t) => t.id === sideTabId) : null;
+
+  const config = useTitleBarConfig(activeTab, togglePanel);
 
   return (
     <>
       <WindowTitleBar
-        title={config.title}
-        toggle={config.toggle}
+        tabBar={<TabBar />}
         rightActions={config.rightActions}
         centerActions={config.centerActions}
       />
       <div className="flex h-[calc(100vh-50px)] w-full px-2 pb-2 bg-surface-0">
-        {/* White card — flex row; content shifts left as panel opens inside */}
         <div className="flex flex-row flex-1 min-w-0 bg-surface-1 border border-border-gray-1 rounded-2xl overflow-x-hidden">
-          {/* Reading area — shrinks when panel opens; floating buttons move with it */}
+          {/* Main content pane */}
           <main className="relative flex-1 min-w-0 h-full overflow-y-auto px-4 scrollbar-stable">
-            {config.onBack && (
-              <div className="absolute top-6 left-24 z-10">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={ChevronLeft}
-                  iconPosition="left"
-                  onClick={config.onBack}
-                >
-                  Back
-                </Button>
-              </div>
-            )}
-            <Outlet />
+            <TabContentRenderer tab={activeTab} />
           </main>
 
-          {/* Resource panel — inside the white card, animates width to push content left */}
+          {/* Side tab pane */}
+          <AnimatePresence initial={false}>
+            {sideTab && (
+              <motion.div
+                key="side-pane"
+                className="flex-shrink-0 h-full"
+                initial={{ width: 0 }}
+                animate={{ width: "38%" }}
+                exit={{ width: 0 }}
+                transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+              >
+                <SidePane tab={sideTab} onClose={closeSide} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Resource panel */}
           <AnimatePresence initial={false}>
             {isPanelOpen && (
               <motion.div

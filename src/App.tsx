@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AppLayout } from "@components/shell/AppLayout";
-import { BibleLibrary } from "@/pages/BibleLibrary";
-import { Notes } from "@/pages/Notes";
 import { Search } from "@/pages/Search";
 import { Settings } from "@/pages/Settings";
-import { Reader } from "@/pages/Reader";
 import { UILibrary } from "@/pages/UILibrary";
 import { Auth } from "@/pages/Auth";
 import { RouteError } from "@/pages/RouteError";
@@ -31,11 +28,9 @@ const router = createHashRouter([
     element: <AppLayout />,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <BibleLibrary /> },
-      { path: "notes",    element: <Notes /> },
+      { index: true, element: null },
       { path: "search",   element: <Search /> },
-      { path: "settings",       element: <Settings /> },
-      { path: "reader/:bookId", element: <Reader /> },
+      { path: "settings", element: <Settings /> },
     ],
   },
 ]);
