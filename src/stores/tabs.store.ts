@@ -1,21 +1,27 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { Tab, TabDescriptor, TabParams } from "@/types/tabs";
 
-const DEFAULT_TAB: Tab = {
-  id: "default-bible-library",
-  type: "bible-library",
-  label: "Library",
-  params: {},
+const DEFAULT_TABS: Tab[] = [
+  { id: "default-home",  type: "home",       label: "Home",  params: {} },
+  { id: "default-notes", type: "notes-list", label: "Notes", params: {} },
+];
+
+const GENESIS_TAB: Tab = {
+  id: "initial-genesis",
+  type: "reader",
+  label: "Genesis",
+  params: { bookId: "1" },
 };
 
 function makeId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-function paramsMatch(a: TabParams, b: TabParams): boolean {
-  const ka = Object.keys(a).sort();
-  const kb = Object.keys(b).sort();
-  return ka.join() === kb.join() && ka.every((k) => a[k] === b[k]);
+// Checks whether descriptor params are a subset of the existing tab's params.
+// Allows stored tabs to have extra runtime params (e.g. chapter) without breaking deduplication.
+function paramsSubset(descriptor: TabParams, existing: TabParams): boolean {
+  return Object.keys(descriptor).every((k) => existing[k] === descriptor[k]);
 }
 
 interface TabsStore {
@@ -33,9 +39,12 @@ interface TabsStore {
   updateTabLabel(id: string, label: string): void;
 }
 
-export const useTabsStore = create<TabsStore>((set, get) => ({
-  tabs: [DEFAULT_TAB],
-  activeTabId: DEFAULT_TAB.id,
+export const useTabsStore = create<TabsStore>()(
+  persist(
+    (set, get) => ({
+  tabs: [...DEFAULT_TABS, GENESIS_TAB],
+  activeTabId: GENESIS_TAB.id,
+  sideTabId: null,
   sideTabId: null,
 
   openTab(descriptor, opts) {
@@ -51,7 +60,7 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     }
 
     const existing = tabs.find(
-      (t) => t.type === descriptor.type && paramsMatch(t.params, descriptor.params)
+      (t) => t.type === descriptor.type && paramsSubset(descriptor.params, t.params)
     );
     if (existing) {
       set({ activeTabId: existing.id });
@@ -70,7 +79,7 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   openInSide(descriptor) {
     const { tabs } = get();
     const existing = tabs.find(
-      (t) => t.type === descriptor.type && paramsMatch(t.params, descriptor.params)
+      (t) => t.type === descriptor.type && paramsSubset(descriptor.params, t.params)
     );
     if (existing) {
       set({ sideTabId: existing.id });
@@ -82,11 +91,22 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
 
   closeTab(id) {
     const { tabs, activeTabId, sideTabId } = get();
+    const tab = tabs.find((t) => t.id === id);
+    if (!tab || tab.type === "home" || tab.type === "bible-library" || tab.type === "notes-list") return;
     if (tabs.length <= 1) return;
     const idx = tabs.findIndex((t) => t.id === id);
     const next = tabs.filter((t) => t.id !== id);
-    const newActive =
-      id === activeTabId ? next[Math.max(0, idx - 1)].id : activeTabId;
+    // If closing the active tab, prefer the adjacent user tab;
+    // if no user tabs remain, fall back to the Bible (library) tab.
+    let newActive = activeTabId;
+    if (id === activeTabId) {
+      const remainingUser = next.filter((t) => t.type !== "bible-library" && t.type !== "notes-list");
+      if (remainingUser.length > 0) {
+        newActive = next[Math.max(0, idx - 1)].id;
+      } else {
+        newActive = "default-home";
+      }
+    }
     set({ tabs: next, activeTabId: newActive, sideTabId: sideTabId === id ? null : sideTabId });
   },
 
@@ -111,4 +131,27 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
       tabs: s.tabs.map((t) => (t.id === id ? { ...t, label } : t)),
     }));
   },
-}));
+    }),
+    {
+      name: "berrie-tabs",
+      merge(persisted: any, current) {
+        const stored: Tab[] = persisted?.tabs ?? [];
+        const defaults = DEFAULT_TABS.map((d) => stored.find((t) => t.id === d.id) ?? d);
+        // Strip any stale navigation tabs that are no longer in DEFAULT_TABS
+        const NAV_TYPES = new Set(["home", "bible-library", "notes-list"]);
+        const userTabs = stored.filter(
+          (t) => !DEFAULT_TABS.some((d) => d.id === t.id) && !NAV_TYPES.has(t.type)
+        );
+        return {
+          ...current,
+          ...persisted,
+          tabs: [...defaults, ...userTabs],
+        };
+      },
+      partialize: (state) => ({
+        tabs: state.tabs,
+        activeTabId: state.activeTabId,
+      }),
+    }
+  )
+);

@@ -4,6 +4,7 @@ import { fetchVerses } from "@/lib/bible.service";
 import { CVSelector, ChapterBlock } from "@components/bible";
 import { FeatureCover, FooterBlur, BookShader } from "@components/primitives";
 import { useResourcesStore } from "@/stores/resources.store";
+import { useAnnotationStore } from "@/stores/annotation.store";
 import { useTabsStore } from "@/stores/tabs.store";
 import type { Chapter, Verse } from "@/types";
 
@@ -52,6 +53,9 @@ export function Reader({ tabId, bookId }: ReaderProps) {
   const loadCommentaryForChapter = useResourcesStore((s) => s.loadCommentaryForChapter);
   const prefetchCommentaryForChapter = useResourcesStore((s) => s.prefetchCommentaryForChapter);
   const hasCommentaries = useResourcesStore((s) => s.commentaries.length > 0);
+  const loadCrossRefsForChapter = useResourcesStore((s) => s.loadCrossRefsForChapter);
+  const prefetchCrossRefsForChapter = useResourcesStore((s) => s.prefetchCrossRefsForChapter);
+  const loadAnnotationChapter = useAnnotationStore((s) => s.loadChapter);
 
   const stableChaptersRef = useRef(stableChapters);
   stableChaptersRef.current = stableChapters;
@@ -68,6 +72,8 @@ export function Reader({ tabId, bookId }: ReaderProps) {
     // B1 fix: ensure activeCommentaryId is set before fetching entries
     if (!hasCommentaries) await loadCommentaries();
     await loadCommentaryForChapter(chapter.id);
+    // Load cross-refs for the same chapter in parallel — data is ready before panel opens
+    if (book) void loadCrossRefsForChapter(book.id, activeChapter);
     // Reset so the same chapter can reload if commentary selection changes
     lastCommentaryChapterRef.current = null;
   }
@@ -88,6 +94,7 @@ export function Reader({ tabId, bookId }: ReaderProps) {
     [activeChapter - 1, activeChapter + 1].forEach(n => {
       const ch = stableChaptersRef.current.find(c => c.number === n);
       if (ch) prefetchCommentaryForChapter(ch.id);
+      if (book) prefetchCrossRefsForChapter(book.id, n);
     });
   }, [activeChapter]);
 
@@ -128,6 +135,8 @@ export function Reader({ tabId, bookId }: ReaderProps) {
         );
         setAllChapterVerses(sorted);
         setIsLoadingAll(false);
+        // Eagerly load annotations for all chapters — deduped in the store
+        if (book) sorted.forEach(r => { if (r.verses.length > 0) loadAnnotationChapter(book.id, r.chapter.number); });
 
         const target = Number(chParam);
         setActiveChapter(target);
@@ -245,11 +254,10 @@ export function Reader({ tabId, bookId }: ReaderProps) {
         />
       </div>
 
-
       {/* Inner scroll container — the actual scrolling surface */}
       <div ref={scrollContainerRef} className="h-full overflow-y-auto px-4 scrollbar-stable">
       {/* Reading column — truly centered */}
-      <div className="flex flex-col gap-8 max-w-200 mx-auto w-full pb-16 pt-8">
+      <div className="flex flex-col gap-8 max-w-200 mx-auto w-full pb-16 pt-20">
         {/* Book cover + title */}
         <div className="flex flex-col">
           <FeatureCover

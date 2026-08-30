@@ -1,4 +1,4 @@
-export type TabType = "bible-library" | "reader" | "notes-list" | "note";
+export type TabType = "home" | "bible-library" | "reader" | "notes-list" | "note";
 
 export type TabParams = Record<string, string>;
 

@@ -55,6 +55,17 @@ const VARIANTS: Variant[] = [
   { colors: pad([h("#000c10"), h("#006080"), h("#20c0c8"), h("#98f0f8")]), colorCount: 4, scale: 1.8, intensity: 0.44, warp: 0.04, rotate: 1.6, drift: 0.09, timeScale: -0.56 },
 ];
 
+function rgbToHex(r: number, g: number, b: number): string {
+  const h = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+export function bookShaderAccentColor(bookOrder: number): string {
+  const idx = ((bookOrder - 1) % VARIANTS.length + VARIANTS.length) % VARIANTS.length;
+  const [r, g, b] = VARIANTS[idx].colors[2]; // 3rd stop — the bright accent
+  return rgbToHex(r, g, b);
+}
+
 export interface BookShaderProps {
   bookOrder: number;
   className?: string;

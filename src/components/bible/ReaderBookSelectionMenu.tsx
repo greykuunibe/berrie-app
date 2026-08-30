@@ -48,12 +48,14 @@ export interface ReaderBookSelectionMenuProps {
   book: Book | undefined;
   chParam: string;
   vParam: string | null;
+  triggerClassName?: string;
 }
 
 export function ReaderBookSelectionMenu({
   book,
   chParam,
   vParam,
+  triggerClassName,
 }: ReaderBookSelectionMenuProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -131,7 +133,7 @@ export function ReaderBookSelectionMenu({
 
   return (
     <div ref={anchorRef}>
-      <ButtonTrigger open={open} onClick={handleToggle} width={121}>
+      <ButtonTrigger open={open} onClick={handleToggle} width={121} >
         {reference || "Go to…"}
       </ButtonTrigger>
 

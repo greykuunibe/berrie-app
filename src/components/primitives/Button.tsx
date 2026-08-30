@@ -4,7 +4,7 @@ import { Icon, Loader, Check, XMark } from "@Icons";
 import { AnimatePresence, motion } from "motion/react";
 
 const baseStyle =
-  "inline-flex items-center cursor-pointer justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-[color,transform] ";
+  "inline-flex items-center cursor-pointer justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-[color,transform]";
 
 const variantStyles = {
   primary:

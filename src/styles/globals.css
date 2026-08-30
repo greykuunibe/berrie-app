@@ -135,11 +135,11 @@
 
 .window-titlebar {
   background-color: var(--color-surface-0);
-  height: 50px;
+  height: 35px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding:0 16px;
   user-select: none;
 }
 

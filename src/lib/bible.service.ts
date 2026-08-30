@@ -28,10 +28,13 @@ export async function fetchBooksByTestament(testament: "OT" | "NT"): Promise<Boo
   return data ?? [];
 }
 
+const ALLOWED_TRANSLATIONS = ["KJV", "BSB", "HebModern", "LEB", "CPDV"];
+
 export async function fetchTranslations(): Promise<Translation[]> {
   const { data, error } = await supabase
     .from("translations")
     .select("*")
+    .in("abbreviation", ALLOWED_TRANSLATIONS)
     .order("abbreviation");
   if (error) throw error;
   return data ?? [];

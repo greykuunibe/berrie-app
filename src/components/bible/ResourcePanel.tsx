@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
-import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading, CommentaryShader } from "@components/primitives";
+import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading } from "@components/primitives";
 import { Icon } from "@components/primitives/Icons";
-import { Input } from "@components/primitives/Form/Input";
-import { Commentary, Lexicon, CrossRef, Map as MapIcon, OpenPanel, Search, Account, Info, Clock } from "@Icons";
+import { Input } from "@components/primitives";
+import { Commentary, Lexicon, CrossRef, OpenPanel, Search, Account, Info, Clock } from "@Icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useResourcesStore } from "@/stores/resources.store";
 import { useBibleStore } from "@/stores/bible.store";
-import { fetchChapters, fetchVerses, fetchCrossReferencesForChapter } from "@/lib/bible.service";
+import { fetchChapters, fetchVerses } from "@/lib/bible.service";
 import type { CrossReference } from "@/types";
 import type { Resource } from "@/types";
 
@@ -360,12 +360,11 @@ function VerseRefPopover({
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
-type PanelTab = "commentary" | "concordance" | "maps";
+type PanelTab = "commentary" | "concordance";
 
 const TABS: { value: PanelTab; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
-  { value: "commentary",  label: "Commentary",  icon: Commentary },
-  { value: "concordance", label: "Cross-refs",  icon: CrossRef  },
-  { value: "maps",        label: "Maps",        icon: MapIcon   },
+  { value: "commentary",  label: "Commentary", icon: Commentary },
+  { value: "concordance", label: "Cross-refs", icon: CrossRef  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -592,11 +591,6 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
         </div>
       )}
 
-      {/* Shader banner — unique palette per commentary */}
-      {activeCommentaryId != null && (
-        <CommentaryShader commentaryId={activeCommentaryId} />
-      )}
-
       {commentaryEntries.map((entry, idx) => {
         const verseLabel = entry.from_verse != null
           ? entry.to_verse != null && entry.to_verse !== entry.from_verse
@@ -742,45 +736,15 @@ function LexiconCard({
 // ── Concordance (cross-references) content ───────────────────────────────────
 
 function ConcordanceContent() {
-  const currentBook     = useBibleStore(s => s.currentBook);
-  const books           = useBibleStore(s => s.books);
-  const activeTranslation = useBibleStore(s => s.activeTranslation);
-  const [searchParams]  = useSearchParams();
-  const navigate        = useNavigate();
-  const chapterNum      = parseInt(searchParams.get("ch") ?? "1");
+  const currentBook  = useBibleStore(s => s.currentBook);
+  const books        = useBibleStore(s => s.books);
+  const [searchParams] = useSearchParams();
+  const navigate     = useNavigate();
+  const chapterNum   = parseInt(searchParams.get("ch") ?? "1");
 
-  const [refs, setRefs]         = useState<CrossReference[]>([]);
-  const [verseTexts, setVerseTexts] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!currentBook) return;
-    setRefs([]);
-    setVerseTexts({});
-    setIsLoading(true);
-    fetchCrossReferencesForChapter(currentBook.id, chapterNum)
-      .then(data => { setRefs(data); setIsLoading(false); })
-      .catch(() => setIsLoading(false));
-  }, [currentBook?.id, chapterNum]);
-
-  // Lazy-fetch verse text for target references
-  useEffect(() => {
-    if (!refs.length || !activeTranslation) return;
-    // Collect unique book+chapter combos
-    const targets = [...new Map(refs.map(r => [`${r.to_book_id}:${r.to_chapter}`, r])).values()];
-    targets.forEach(async ref => {
-      try {
-        const chaps = await fetchChapters(ref.to_book_id);
-        const ch = chaps.find(c => c.number === ref.to_chapter);
-        if (!ch) return;
-        const verses = await fetchVerses(ch.id, activeTranslation.id);
-        verses.forEach(v => {
-          const key = `${ref.to_book_id}:${ref.to_chapter}:${v.number}`;
-          setVerseTexts(prev => ({ ...prev, [key]: v.text }));
-        });
-      } catch { /* best-effort */ }
-    });
-  }, [refs.length, activeTranslation?.id]);
+  const refs        = useResourcesStore(s => s.crossRefs);
+  const verseTexts  = useResourcesStore(s => s.crossRefVerseTexts);
+  const isLoading   = useResourcesStore(s => s.isLoadingCrossRefs);
 
   if (!currentBook) {
     return (
@@ -874,7 +838,6 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
   const byType = {
     commentary:  resources.filter(r => r.type === "commentary"),
     concordance: resources.filter(r => r.type === "concordance"),
-    maps:        resources.filter(r => r.type === "maps"),
   };
 
   const activeCommentaryResourceId = commentaries.find(c => c.id === activeCommentaryId)?.resource_id ?? null;
@@ -953,18 +916,6 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
         )}
 
         {activeTab === "concordance" && <ConcordanceContent />}
-
-        {activeTab === "maps" && (
-          <div className="flex flex-1 items-center justify-center py-16">
-            <EmptyState
-              icon={MapIcon}
-              title="Maps"
-              description="Download maps to see locations mentioned in scripture"
-              action={{ label: "Download", onClick: () => {} }}
-            />
-          </div>
-        )}
-
       </div>
 
       {/* Resource selector dropdown — opens below the clicked tab button */}

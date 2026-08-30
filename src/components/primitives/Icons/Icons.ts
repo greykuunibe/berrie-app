@@ -12,7 +12,7 @@ export {
   ChevronUpIcon as ChevronUp,
   ChevronLeftIcon as ChevronLeft,
   ChevronRightIcon as ChevronRight,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Actions
@@ -42,7 +42,7 @@ export {
   InformationCircleIcon as Info,
   ArrowLeftStartOnRectangleIcon as SignOut,
   EnvelopeIcon as Mail,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Layout
@@ -54,7 +54,7 @@ export {
   MinusIcon as Divider,
   TableCellsIcon as Table,
   MapIcon as Map,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Bible / Study
@@ -65,7 +65,7 @@ export {
   BookOpenIcon as Lexicon,
   PaintBrushIcon as Highlight,
   LinkIcon as CrossRef,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Appearance
@@ -75,7 +75,7 @@ export {
   SunIcon as Light,
   MoonIcon as Moon,
   ComputerDesktopIcon as System,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Account / Settings
@@ -85,7 +85,7 @@ export {
   UserIcon as Account,
   CircleStackIcon as Storage,
   ArrowPathIcon as Sync,
-} from "@heroicons/react/20/solid";
+} from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Editor / Text
@@ -117,35 +117,36 @@ export {
 // ─────────────────────────────────────────────
 
 export {
-  BookMarked as Concordance,
-  Loader as ProcessingInteraction,
-  Clock,
-} from "lucide-react";
+  BookmarkIcon as Concordance,
+  ClockIcon as Clock,
+  ArrowPathIcon as ProcessingInteraction,
+} from "@heroicons/react/24/solid";
 
-export { ChevronDoubleRightIcon as OpenPanel } from "@heroicons/react/20/solid";
+export { ChevronDoubleRightIcon as OpenPanel } from "@heroicons/react/24/solid";
+export { HomeIcon as Home } from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Reactions
 // ─────────────────────────────────────────────
 
-export { FaceSmileIcon as FaceSmile } from "@heroicons/react/20/solid";
+export { FaceSmileIcon as FaceSmile } from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Other
 // ─────────────────────────────────────────────
 
-export { HeartIcon as None } from "@heroicons/react/20/solid";
+export { HeartIcon as None } from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Special controls
 // ─────────────────────────────────────────────
 
-export { ChevronDownIcon as SelectChevron } from "@heroicons/react/20/solid";
+export { ChevronDownIcon as SelectChevron } from "@heroicons/react/24/solid";
 
-export { XMarkIcon as XMark } from "@heroicons/react/20/solid";
+export { XMarkIcon as XMark } from "@heroicons/react/24/solid";
 
 // ─────────────────────────────────────────────
 // Loader
 // ─────────────────────────────────────────────
 
-export { LoaderCircle as Loader } from "lucide-react";
+export { ArrowPathIcon as Loader } from "@heroicons/react/24/solid";

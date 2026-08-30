@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@components/primitives/Icons";
 import { Menu } from "@components/primitives/Menu";
-import { MenuItem } from "@components/primitives/Menu";
+import { MenuItem } from "@components/primitives/MenuItem";
 import { Check, Download, Remove, More, Cloud, Info, Delete } from "@Icons";
 
 export interface ResourceCardProps {

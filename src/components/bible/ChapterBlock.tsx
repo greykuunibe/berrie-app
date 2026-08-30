@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { VerseBlock } from "../VerseBlock";
-import { TextSelectionToolbar, EmojiPicker } from "../TextSelectionToolbar";
+import { VerseBlock } from "./VerseBlock";
+import { TextSelectionToolbar, EmojiPicker } from "./TextSelectionToolbar";
 import { EmptyState } from "@components/primitives";
 import { Bible } from "@Icons";
 import { useAnnotationStore, verseKey } from "@/stores/annotation.store";
@@ -33,13 +33,8 @@ function getAbsoluteOffset(container: Node, node: Node, offset: number): number 
 }
 
 export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty }: ChapterBlockProps) {
-  const { highlights, notes, reactions, loadChapter, addHighlight, removeHighlight, addNote, addReaction } =
+  const { highlights, notes, reactions, addHighlight, removeHighlight, addNote, addReaction } =
     useAnnotationStore();
-
-  // Load persisted annotations from Supabase when verses are ready
-  useEffect(() => {
-    if (verses.length > 0) loadChapter(bookId, chapterNumber);
-  }, [bookId, chapterNumber, verses.length]);
 
   const verseTextRefs = useRef<Map<number, HTMLSpanElement>>(new Map());
   const skipNextMouseUp = useRef(false);

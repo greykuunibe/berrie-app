@@ -58,6 +58,9 @@ interface AnnotationStore {
   addReaction: (bookId: number, chapter: number, verse: number, start: number, end: number, emoji: string) => Promise<void>;
 }
 
+// Module-level dedup — prevents concurrent or redundant Supabase calls for the same chapter
+const _loadedChapters = new Set<string>();
+
 export const useAnnotationStore = create<AnnotationStore>()((set, get) => ({
   highlights: {},
   notes: {},
@@ -65,6 +68,9 @@ export const useAnnotationStore = create<AnnotationStore>()((set, get) => ({
 
   // ── Load all annotations for one chapter from Supabase ──────────────────────
   loadChapter: async (bookId, chapterNumber) => {
+    const key = `${bookId}:${chapterNumber}`;
+    if (_loadedChapters.has(key)) return;
+    _loadedChapters.add(key);
     const { highlights, notes, reactions } = await fetchAnnotationsForChapter(bookId, chapterNumber);
 
     const hlMap: Record<string, StoredHighlight[]> = {};

@@ -13,7 +13,7 @@ export interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-8 w-[383px] max-w-full">
+    <div className="flex flex-col items-center gap-2 w-95.75 max-w-full">
       {/* Icon — large, surface-2 fill (decorative) */}
       <div className="w-20 h-20 flex items-center justify-center">
         <Icon
@@ -27,18 +27,18 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
       {/* Text + action */}
       <div className="flex flex-col items-center gap-4 w-full">
         <div className="flex flex-col items-center gap-2 w-full">
-          <p className="text-2xl text-text-primary text-center leading-none">
+          <p className="text-lg text-text-primary text-center leading-none">
             {title}
           </p>
-          {description && (
+          {/* {description && (
             <p className="text-sm text-text-muted text-center leading-5 max-w-56">
               {description}
             </p>
-          )}
+          )} */}
         </div>
 
         {action && (
-          <Button variant="brand" size="md" onClick={action.onClick}>
+          <Button variant="secondary" size="md" onClick={action.onClick}>
             {action.label}
           </Button>
         )}

@@ -11,6 +11,7 @@ export interface ButtonTriggerProps {
   /** Fixed width in px — omit to let the button size to its content. */
   width?: number;
   variant?: "primary" | "brand";
+  className?: string;
   /**
    * Split mode: left half (label) triggers `onSelect`, right half (chevron) triggers `onClick`.
    * A divider separates them so toggling does not open the menu.
@@ -23,19 +24,19 @@ const ICON_COLOR = {
   brand: "white" as const,
 };
 
-export function ButtonTrigger({ open, onClick, children, width, variant = "primary", onSelect }: ButtonTriggerProps) {
+export function ButtonTrigger({ open, onClick, children, width, variant = "primary", className, onSelect }: ButtonTriggerProps) {
   // ── Unified mode (original behaviour) ───────────────────────────────────────
   if (!onSelect) {
     return (
       <Button
         variant={variant}
         size="sm"
-        className="min-w-0! justify-between! pr-3!"
+        className={["min-w-0! pr-3! [&>span:first-child]:flex [&>span:first-child]:w-full [&>span:first-child]:items-center [&>span:first-child]:justify-between", className].filter(Boolean).join(" ")}
         style={width ? { width } : undefined}
         onClick={onClick}
       >
         <span
-          className="overflow-hidden text-ellipsis whitespace-nowrap text-left block"
+          className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-left"
           style={width ? { maxWidth: width - 48 } : undefined}
         >
           {children}
@@ -43,7 +44,7 @@ export function ButtonTrigger({ open, onClick, children, width, variant = "prima
         <motion.span
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="shrink-0 ml-1"
+          className="shrink-0"
         >
           <Icon icon={ChevronDown} size={16} color={ICON_COLOR[variant]} />
         </motion.span>

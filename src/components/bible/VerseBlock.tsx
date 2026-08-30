@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "@components/primitives";
 import { Icon } from "@components/primitives/Icons";
 import { Note } from "@Icons";
-import { HIGHLIGHT_COLORS } from "../TextSelectionToolbar";
+import { HIGHLIGHT_COLORS } from "./TextSelectionToolbar";
 import type { HighlightColor } from "../TextSelectionToolbar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

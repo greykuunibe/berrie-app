@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Resource, ResourceType, Commentary, CommentaryEntry, Lexicon } from "@/types";
+import type { Resource, ResourceType, Commentary, CommentaryEntry, Lexicon, CrossReference } from "@/types";
 import {
   fetchResources,
   fetchCommentaries,
@@ -8,6 +8,8 @@ import {
   fetchLexiconEntry,
   searchLexicon,
 } from "@/lib/resources.service";
+import { fetchCrossReferencesForChapter, fetchChapters, fetchVerses } from "@/lib/bible.service";
+import { useBibleStore } from "@/stores/bible.store";
 
 type ResourceTab = "commentary" | "lexicon" | "concordance" | "maps";
 
@@ -48,6 +50,13 @@ interface ResourcesStore {
   setPanelOpen: (open: boolean) => void;
   clearError: () => void;
 
+  crossRefs: CrossReference[];
+  crossRefVerseTexts: Record<string, string>;
+  isLoadingCrossRefs: boolean;
+  crossRefCache: Record<string, { refs: CrossReference[]; verseTexts: Record<string, string> }>;
+  loadCrossRefsForChapter: (bookId: number, chapterNum: number) => Promise<void>;
+  prefetchCrossRefsForChapter: (bookId: number, chapterNum: number) => void;
+
   isTranslationLocal: (id: number) => boolean;
   downloadTranslation: (id: number) => void;
   removeTranslation: (id: number) => void;
@@ -77,6 +86,10 @@ export const useResourcesStore = create<ResourcesStore>()(
   error: null,
   localTranslationIds: [],
   localResourceIds: [],
+  crossRefs: [],
+  crossRefVerseTexts: {},
+  isLoadingCrossRefs: false,
+  crossRefCache: {},
 
   loadResources: async (type?: ResourceType) => {
     set({ isLoadingResources: true, error: null });
@@ -165,6 +178,49 @@ export const useResourcesStore = create<ResourcesStore>()(
     } catch (err) {
       set({ error: (err as Error).message, isLoadingLexicon: false });
     }
+  },
+
+  loadCrossRefsForChapter: async (bookId: number, chapterNum: number) => {
+    const cacheKey = `${bookId}:${chapterNum}`;
+    const cached = get().crossRefCache[cacheKey];
+    if (cached) {
+      set({ crossRefs: cached.refs, crossRefVerseTexts: cached.verseTexts });
+      return;
+    }
+    set({ isLoadingCrossRefs: true });
+    try {
+      const refs = await fetchCrossReferencesForChapter(bookId, chapterNum);
+      const translationId = useBibleStore.getState().activeTranslation?.id;
+      const verseTexts: Record<string, string> = {};
+      if (translationId && refs.length) {
+        const targets = [...new Map(refs.map(r => [`${r.to_book_id}:${r.to_chapter}`, r])).values()];
+        await Promise.all(targets.map(async ref => {
+          try {
+            const chaps = await fetchChapters(ref.to_book_id);
+            const ch = chaps.find(c => c.number === ref.to_chapter);
+            if (!ch) return;
+            const verses = await fetchVerses(ch.id, translationId);
+            verses.forEach(v => {
+              verseTexts[`${ref.to_book_id}:${ref.to_chapter}:${v.number}`] = v.text;
+            });
+          } catch { /* best-effort per target */ }
+        }));
+      }
+      set(state => ({
+        crossRefs: refs,
+        crossRefVerseTexts: verseTexts,
+        isLoadingCrossRefs: false,
+        crossRefCache: { ...state.crossRefCache, [cacheKey]: { refs, verseTexts } },
+      }));
+    } catch (err) {
+      set({ isLoadingCrossRefs: false, error: (err as Error).message });
+    }
+  },
+
+  prefetchCrossRefsForChapter: (bookId: number, chapterNum: number) => {
+    const cacheKey = `${bookId}:${chapterNum}`;
+    if (get().crossRefCache[cacheKey]) return;
+    get().loadCrossRefsForChapter(bookId, chapterNum).catch(() => {});
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
