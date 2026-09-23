@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
-import { Button } from "@components/primitives/Button";
+import { Button, variantStyles } from "@components/primitives/Button";
 import { Icon } from "@components/primitives/Icons";
 import { ChevronDown } from "@Icons";
 
@@ -10,7 +10,7 @@ export interface ButtonTriggerProps {
   children: ReactNode;
   /** Fixed width in px — omit to let the button size to its content. */
   width?: number;
-  variant?: "primary" | "brand";
+  variant?: "primary" | "brand" | "secondary" | "ghost";
   className?: string;
   /**
    * Split mode: left half (label) triggers `onSelect`, right half (chevron) triggers `onClick`.
@@ -22,6 +22,8 @@ export interface ButtonTriggerProps {
 const ICON_COLOR = {
   primary: "muted" as const,
   brand: "white" as const,
+  secondary: "primary" as const,
+  ghost: "primary" as const,
 };
 
 export function ButtonTrigger({ open, onClick, children, width, variant = "primary", className, onSelect }: ButtonTriggerProps) {
@@ -46,22 +48,18 @@ export function ButtonTrigger({ open, onClick, children, width, variant = "prima
           transition={{ duration: 0.2, ease: "easeInOut" }}
           className="shrink-0"
         >
-          <Icon icon={ChevronDown} size={16} color={ICON_COLOR[variant]} />
+          <Icon icon={ChevronDown} size={14} color={ICON_COLOR[variant]} />
         </motion.span>
       </Button>
     );
   }
 
   // ── Split mode — label toggles, chevron opens menu ───────────────────────────
-  const borderColor = variant === "brand" ? "border-white/30" : "border-border-gray-2";
-  const baseCls =
-    variant === "brand"
-      ? "brand-gradient border border-border-brand text-white element-box-shadow"
-      : "bg-surface-1 border border-border-gray-1 text-text-primary element-box-shadow";
+  const dividerColor = variant === "brand" ? "border-white/30" : "border-border-gray-2";
 
   return (
     <div
-      className={`inline-flex items-center rounded-full h-9 overflow-hidden ${baseCls}`}
+      className={`inline-flex items-center rounded-full h-9 overflow-hidden ${variantStyles[variant]}`}
       style={width ? { width } : undefined}
     >
       {/* Label section — primary action */}
@@ -74,7 +72,7 @@ export function ButtonTrigger({ open, onClick, children, width, variant = "prima
       </button>
 
       {/* Divider */}
-      <div className={`self-stretch border-l shrink-0 ${borderColor}`} />
+      <div className={`self-stretch border-l shrink-0 ${dividerColor}`} />
 
       {/* Chevron section — opens menu */}
       <button

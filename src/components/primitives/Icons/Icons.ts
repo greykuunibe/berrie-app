@@ -21,10 +21,10 @@ export {
 export {
   PlusIcon as Add,
   PlusCircleIcon as AddCircle,
-  ClipboardDocumentIcon as Copy,
+  DocumentDuplicateIcon as Copy,
   DocumentPlusIcon as AddNote,
   DocumentTextIcon as Note,
-  ShareIcon as Share,
+  ArrowUpOnSquareIcon as Share,
   ArrowUpCircleIcon as Upload,
   EllipsisHorizontalIcon as More,
   InboxStackIcon as Downloads,
@@ -150,3 +150,16 @@ export { XMarkIcon as XMark } from "@heroicons/react/24/solid";
 // ─────────────────────────────────────────────
 
 export { ArrowPathIcon as Loader } from "@heroicons/react/24/solid";
+export { SwatchIcon as Swatch } from "@heroicons/react/24/solid";
+
+// ─────────────────────────────────────────────
+// Outline variants (for toolbars / lighter UI)
+// ─────────────────────────────────────────────
+
+export {
+  SwatchIcon as SwatchOutline,
+  DocumentPlusIcon as AddNoteOutline,
+  DocumentDuplicateIcon as CopyOutline,
+  ShareIcon as ShareOutline,
+  ArrowUpCircleIcon as UploadOutline,
+} from "@heroicons/react/24/outline";

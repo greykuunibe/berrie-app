@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
-import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading } from "@components/primitives";
+import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading, ToggleGroup } from "@components/primitives";
+import { SelectionContainer } from "./SelectionContainer";
 import { Icon } from "@components/primitives/Icons";
 import { Input } from "@components/primitives";
-import { Commentary, Lexicon, CrossRef, OpenPanel, Search, Account, Info, Clock } from "@Icons";
+import { Commentary, Lexicon, CrossRef, Search, Account, Info, Clock } from "@Icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useResourcesStore } from "@/stores/resources.store";
 import { useBibleStore } from "@/stores/bible.store";
@@ -342,7 +343,7 @@ function VerseRefPopover({
   return createPortal(
     <div
       data-verse-popover="true"
-      className="fixed z-[2000] bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl p-4 w-80 max-w-[90vw]"
+      className="fixed z-2000 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl p-4 w-80 max-w-[90vw]"
       style={{ top, left, transform: "translate(-50%, calc(-100% - 8px))" }}
     >
       <p className="text-xs font-semibold text-text-brand mb-2">{refText}</p>
@@ -360,11 +361,12 @@ function VerseRefPopover({
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
-type PanelTab = "commentary" | "concordance";
+type PanelTab = "commentary" | "concordance" | "lexicon";
 
-const TABS: { value: PanelTab; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
-  { value: "commentary",  label: "Commentary", icon: Commentary },
-  { value: "concordance", label: "Cross-refs", icon: CrossRef  },
+const TABS: { value: PanelTab; label: string }[] = [
+  { value: "commentary",  label: "Commentary" },
+  { value: "concordance", label: "Cross-refs"  },
+  { value: "lexicon",     label: "Lexicons"    },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -394,9 +396,9 @@ function ResourceSelectorMenu({
   const { isResourceLocal, downloadResource, removeResource } = useResourcesStore();
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[1000]" onClick={onClose} />
+      <div className="fixed inset-0 z-1000" onClick={onClose} />
       <div
-        className="fixed z-[1001] flex flex-col gap-1 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-80 max-h-80 overflow-y-auto"
+        className="fixed z-1001 flex flex-col gap-1 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-80 max-h-80 overflow-y-auto"
         style={{ top: pos.top, left: pos.left }}
       >
         {items.map(r => (
@@ -557,10 +559,7 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
       )}
       {activeResource && (
         <div className="flex flex-col gap-0 pb-4">
-          <p className="text-3xl font-semibold text-text-primary leading-tight">{activeResource.name}</p>
-          {activeResource.description && (
-            <p className="text-sm text-text-muted leading-relaxed">{activeResource.description}</p>
-          )}
+          <p className="text-2xl font-semibold text-text-primary leading-tight">{activeResource.name}</p>
           <div className="flex items-center gap-4 flex-wrap mt-3">
             {activeCommentary?.author && (
               <span className="flex items-center gap-1.5 text-xs text-text-muted">
@@ -810,14 +809,9 @@ function ConcordanceContent() {
   );
 }
 
-// ── ResourcePanel ─────────────────────────────────────────────────────────────
+// ── ResourcesPanelContent ──────────────────────────────────────────────────────
 
-export interface ResourcePanelProps {
-  onClose: () => void;
-}
-
-export function ResourcePanel({ onClose }: ResourcePanelProps) {
-  const [activeTab, setActiveTab] = useState<PanelTab>("commentary");
+export function ResourcesPanelContent() {
   const [openMenuTab, setOpenMenuTab] = useState<PanelTab | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const tabRefs = useRef<Map<PanelTab, HTMLElement>>(new Map());
@@ -826,10 +820,16 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
     resources,
     commentaries,
     activeCommentaryId,
+    activeTab: activeTabRaw,
+    setActiveTab: setActiveTabStore,
     isLoadingResources,
     loadResources,
     setActiveCommentary,
   } = useResourcesStore();
+
+  const hasCommentaryResources = commentaries.length > 0;
+
+  const activeTab = (activeTabRaw as PanelTab) ?? "commentary";
 
   useEffect(() => {
     if (!resources.length) loadResources();
@@ -844,7 +844,7 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
 
   // Primary action — switches content view without opening the menu
   function handleTabSelect(tab: PanelTab) {
-    setActiveTab(tab);
+    setActiveTabStore(tab as string as any);
     setOpenMenuTab(null);
   }
 
@@ -868,7 +868,7 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
     // lexicon / concordance / maps selection can be wired here later
   }
 
-  const openMenuItems = openMenuTab && openMenuTab !== "all"
+  const openMenuItems = openMenuTab
     ? byType[openMenuTab as keyof typeof byType] ?? []
     : [];
 
@@ -876,47 +876,16 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
 
   return (
     <div
-      className="flex flex-col items-center gap-4 p-3 bg-surface-1 border border-border-gray-1 rounded-xl w-full h-full"
-      style={{ boxShadow: "0px 8px 24px rgba(0,0,0,0.10), 0px 2px 8px rgba(0,0,0,0.06), 0px 0px 1px rgba(0,0,0,0.04)" }}
+      className="flex flex-col items-center gap-4 p-3 w-full h-full"
     >
-      {/* Topbar */}
-      <div className="flex items-center gap-4 w-full shrink-0">
-        <Button variant="ghost" size="sm" icon={OpenPanel} iconButton onClick={onClose} />
-
-        {/* Tab toggle — each tab is a ButtonTrigger; non-All tabs open a resource selector */}
-        <div className="flex items-center gap-1">
-          {TABS.map(tab => {
-            const active = activeTab === tab.value;
-            const menuOpen = openMenuTab === tab.value;
-            return (
-              <div
-                key={tab.value}
-                ref={el => { if (el) tabRefs.current.set(tab.value, el); }}
-              >
-                <ButtonTrigger
-                  open={menuOpen}
-                  variant={active ? "brand" : "primary"}
-                  onSelect={() => handleTabSelect(tab.value)}
-                  onClick={() => handleTabMenuOpen(tab.value)}
-                >
-                  {tab.label}
-                </ButtonTrigger>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Content — always shows resource content, never a library list */}
-      <div className="flex flex-col flex-1 w-full overflow-y-auto gap-6 px-2">
+      <SelectionContainer className="flex flex-col flex-1 w-full overflow-y-auto gap-6 px-2">
         {activeTab === "commentary" && (
-          isLoadingResources
-            ? <Loading />
-            : <CommentaryContent hasCommentaryResources={byType.commentary.length > 0} />
+          <CommentaryContent hasCommentaryResources={hasCommentaryResources} />
         )}
 
         {activeTab === "concordance" && <ConcordanceContent />}
-      </div>
+      </SelectionContainer>
 
       {/* Resource selector dropdown — opens below the clicked tab button */}
       {openMenuTab && openMenuItems.length > 0 && (
@@ -932,3 +901,17 @@ export function ResourcePanel({ onClose }: ResourcePanelProps) {
   );
 }
 
+// ── ResourcesPanelActions — rendered in GlobalSidePanel header center slot ────
+
+export function ResourcesPanelActions() {
+  const { activeTab, setActiveTab } = useResourcesStore();
+
+  return (
+    <ToggleGroup
+      variant="toggle"
+      value={activeTab ?? "commentary"}
+      onChange={(v) => setActiveTab(v as any)}
+      options={TABS.map((t) => ({ label: t.label, value: t.value }))}
+    />
+  );
+}

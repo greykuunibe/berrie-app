@@ -18,10 +18,11 @@
   --color-surface-0: #f5f5f4;
   --color-surface-1: #fdfdfd;
   --color-surface-2: #eae8e7;
+  --color-surface-3: #dcdddf;
 
   /* TEXT */
   --color-text-primary: #202020;
-  --color-text-muted: #838383;
+  --color-text-muted: #737373;
   --color-text-inverted: #ffffff;
   --color-text-brand: #3d89f1;
 
@@ -205,6 +206,10 @@ body {
   background: var(--color-text-muted);
 }
 
+::-webkit-scrollbar-button {
+  display: none;
+}
+
 /* Firefox */
 * {
   scrollbar-width: thin;
@@ -215,6 +220,13 @@ body {
    not globally — prevents menus and small containers from reserving empty gutter space */
 .scrollbar-stable {
   scrollbar-gutter: stable;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 .element-box-shadow {

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { Button } from "@components/primitives";
 import { Icon } from "@components/primitives/Icons";
 import { Note } from "@Icons";
 import { HIGHLIGHT_COLORS } from "./TextSelectionToolbar";
-import type { HighlightColor } from "../TextSelectionToolbar";
+import type { HighlightColor } from "./TextSelectionToolbar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,22 +18,15 @@ export interface VerseNote {
   text: string;
 }
 
-export interface VerseReaction {
-  start: number;
-  end: number;
-  emoji: string;
-}
-
 export interface VerseBlockProps {
   number: number;
   text: string;
   highlights?: TextHighlight[];
-  reactions?: VerseReaction[];
   hasNote?: boolean;
   /** Callback to register the verse text span with ChapterBlock for selection detection */
   onRegisterTextRef?: (el: HTMLSpanElement | null) => void;
-  /** Called when the user clicks a floating reaction badge */
-  onReactionBadgeClick?: (start: number, end: number, emoji: string, rect: DOMRect) => void;
+  /** Called when the user clicks an existing highlight mark */
+  onHighlightClick?: (start: number, end: number, color: HighlightColor, rect: DOMRect) => void;
 }
 
 // ── Render highlighted + reacted text ────────────────────────────────────────
@@ -42,79 +34,35 @@ export interface VerseBlockProps {
 function renderHighlightedText(
   text: string,
   highlights: TextHighlight[],
-  reactions: VerseReaction[],
-  onReactionBadgeClick: (start: number, end: number, emoji: string, rect: DOMRect) => void,
+  onHighlightClick: (start: number, end: number, color: HighlightColor, rect: DOMRect) => void,
 ) {
-  if (!highlights.length && !reactions.length) return <>{text}</>;
+  if (!highlights.length) return <>{text}</>;
 
   const pts = [...new Set([
     0, text.length,
     ...highlights.flatMap(h => [h.start, h.end]),
-    ...reactions.flatMap(r => [r.start, r.end]),
   ])].sort((a, b) => a - b);
 
   const atoms = pts.slice(0, -1).map((start, i) => {
     const end = pts[i + 1];
     const hl = highlights.find(h => h.start <= start && h.end >= end) ?? null;
-    const rx = reactions.find(r => r.start <= start && r.end >= end) ?? null;
-    return { start, end, content: text.slice(start, end), hl, rx };
+    return { start, end, content: text.slice(start, end), hl };
   });
 
-  const nodes: ReactNode[] = [];
-  let i = 0;
-  while (i < atoms.length) {
-    const atom = atoms[i];
-    if (atom.rx) {
-      const reaction = atom.rx;
-      const chunks: typeof atoms = [];
-      while (i < atoms.length && atoms[i].rx?.start === reaction.start) {
-        chunks.push(atoms[i++]);
-      }
-      nodes.push(
-        <span key={`rx-${reaction.start}`} className="relative">
-          {/* Absolute anchor keeps badge out of text flow */}
-          <span
-            className="absolute -translate-x-1/2 pointer-events-none"
-            style={{ top: "-1.4em", left: "50%" }}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="pointer-events-auto min-w-0! h-7! w-7! p-0! rounded-lg! text-base leading-none select-none hover:bg-surface-2! hover:border-border-gray-2!"
-              onClick={(e) => {
-                onReactionBadgeClick(
-                  reaction.start,
-                  reaction.end,
-                  reaction.emoji,
-                  (e.currentTarget as HTMLElement).getBoundingClientRect(),
-                );
-              }}
-            >
-              {reaction.emoji}
-            </Button>
-          </span>
-          {chunks.map((c, j) =>
-            c.hl ? (
-              <mark key={j} style={{ background: HIGHLIGHT_COLORS[c.hl.color].bg, borderRadius: 2, paddingInline: 1 }}>
-                {c.content}
-              </mark>
-            ) : c.content
-          )}
-        </span>
-      );
-    } else {
-      nodes.push(
-        atom.hl ? (
-          <mark key={`hl-${atom.start}`} style={{ background: HIGHLIGHT_COLORS[atom.hl.color].bg, borderRadius: 2, paddingInline: 1 }}>
-            {atom.content}
-          </mark>
-        ) : (
-          <span key={`t-${atom.start}`}>{atom.content}</span>
-        )
-      );
-      i++;
-    }
-  }
+  const nodes: ReactNode[] = atoms.map((atom, i) =>
+    atom.hl ? (
+      <mark
+        key={`hl-${atom.start}-${i}`}
+        style={{ background: HIGHLIGHT_COLORS[atom.hl.color].bg, borderRadius: 2, paddingInline: 1, cursor: "pointer" }}
+        onClick={(e) => { e.stopPropagation(); onHighlightClick(atom.hl!.start, atom.hl!.end, atom.hl!.color, (e.currentTarget as HTMLElement).getBoundingClientRect()); }}
+      >
+        {atom.content}
+      </mark>
+    ) : (
+      <span key={`t-${atom.start}-${i}`}>{atom.content}</span>
+    )
+  );
+
   return <>{nodes}</>;
 }
 
@@ -124,10 +72,9 @@ export function VerseBlock({
   number,
   text,
   highlights = [],
-  reactions = [],
   hasNote,
   onRegisterTextRef,
-  onReactionBadgeClick,
+  onHighlightClick,
 }: VerseBlockProps) {
   return (
     <div className="relative self-stretch flex items-baseline gap-1.5">
@@ -137,9 +84,9 @@ export function VerseBlock({
 
       <span
         ref={onRegisterTextRef}
-        className="text-[17px] font-normal leading-6.25 text-text-primary grow cursor-text"
+        className="text-base font-medium leading-6.25 text-text-primary grow cursor-text"
       >
-        {renderHighlightedText(text, highlights, reactions, onReactionBadgeClick ?? (() => {}))}
+        {renderHighlightedText(text, highlights, onHighlightClick ?? (() => {}))}
       </span>
 
       {hasNote && (

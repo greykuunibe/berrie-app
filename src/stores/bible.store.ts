@@ -55,8 +55,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     set({ isLoadingBooks: true, error: null });
     try {
       const books = await fetchBooks();
+      console.log("[bible] loadBooks →", books.length, "books");
       set({ books, isLoadingBooks: false });
     } catch (err) {
+      console.error("[bible] loadBooks failed:", err);
       set({ error: (err as Error).message, isLoadingBooks: false });
     }
   },

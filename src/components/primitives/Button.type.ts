@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import type { HTMLMotionProps } from "motion/react";
+import type { IconColor } from "@components/primitives/Icons";
 
 export type ButtonVariant = "primary" | "secondary" | "brand" | "ghost";
 
@@ -19,6 +20,7 @@ export interface ButtonProps extends HTMLMotionProps<"button"> {
   icon?: ButtonIcon;
   iconButton?: boolean;
   iconPosition?: ButtonIconPosition;
+  iconColor?: IconColor;
 
   state?: ButtonStates;
   onAction?: () => Promise<void>;

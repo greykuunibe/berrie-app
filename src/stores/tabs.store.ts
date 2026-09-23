@@ -27,13 +27,11 @@ function paramsSubset(descriptor: TabParams, existing: TabParams): boolean {
 interface TabsStore {
   tabs: Tab[];
   activeTabId: string;
-  sideTabId: string | null;
+  visitedTabIds: string[];
 
   openTab(descriptor: TabDescriptor, opts?: { replace?: boolean }): void;
   openInNewTab(descriptor: TabDescriptor): void;
-  openInSide(descriptor: TabDescriptor): void;
   closeTab(id: string): void;
-  closeSide(): void;
   activateTab(id: string): void;
   updateTabParams(id: string, params: Partial<TabParams>): void;
   updateTabLabel(id: string, label: string): void;
@@ -44,8 +42,7 @@ export const useTabsStore = create<TabsStore>()(
     (set, get) => ({
   tabs: [...DEFAULT_TABS, GENESIS_TAB],
   activeTabId: GENESIS_TAB.id,
-  sideTabId: null,
-  sideTabId: null,
+  visitedTabIds: [GENESIS_TAB.id],
 
   openTab(descriptor, opts) {
     const { tabs, activeTabId } = get();
@@ -63,41 +60,29 @@ export const useTabsStore = create<TabsStore>()(
       (t) => t.type === descriptor.type && paramsSubset(descriptor.params, t.params)
     );
     if (existing) {
-      set({ activeTabId: existing.id });
+      set((s) => ({
+        activeTabId: existing.id,
+        visitedTabIds: s.visitedTabIds.includes(existing.id) ? s.visitedTabIds : [...s.visitedTabIds, existing.id],
+      }));
       return;
     }
 
     const id = makeId();
-    set({ tabs: [...tabs, { ...descriptor, id }], activeTabId: id });
+    set((s) => ({ tabs: [...s.tabs, { ...descriptor, id }], activeTabId: id, visitedTabIds: [...s.visitedTabIds, id] }));
   },
 
   openInNewTab(descriptor) {
     const id = makeId();
-    set((s) => ({ tabs: [...s.tabs, { ...descriptor, id }], activeTabId: id }));
-  },
-
-  openInSide(descriptor) {
-    const { tabs } = get();
-    const existing = tabs.find(
-      (t) => t.type === descriptor.type && paramsSubset(descriptor.params, t.params)
-    );
-    if (existing) {
-      set({ sideTabId: existing.id });
-      return;
-    }
-    const id = makeId();
-    set((s) => ({ tabs: [...s.tabs, { ...descriptor, id }], sideTabId: id }));
+    set((s) => ({ tabs: [...s.tabs, { ...descriptor, id }], activeTabId: id, visitedTabIds: [...s.visitedTabIds, id] }));
   },
 
   closeTab(id) {
-    const { tabs, activeTabId, sideTabId } = get();
+    const { tabs, activeTabId } = get();
     const tab = tabs.find((t) => t.id === id);
     if (!tab || tab.type === "home" || tab.type === "bible-library" || tab.type === "notes-list") return;
     if (tabs.length <= 1) return;
     const idx = tabs.findIndex((t) => t.id === id);
     const next = tabs.filter((t) => t.id !== id);
-    // If closing the active tab, prefer the adjacent user tab;
-    // if no user tabs remain, fall back to the Bible (library) tab.
     let newActive = activeTabId;
     if (id === activeTabId) {
       const remainingUser = next.filter((t) => t.type !== "bible-library" && t.type !== "notes-list");
@@ -107,15 +92,14 @@ export const useTabsStore = create<TabsStore>()(
         newActive = "default-home";
       }
     }
-    set({ tabs: next, activeTabId: newActive, sideTabId: sideTabId === id ? null : sideTabId });
-  },
-
-  closeSide() {
-    set({ sideTabId: null });
+    set((s) => ({ tabs: next, activeTabId: newActive, visitedTabIds: s.visitedTabIds.filter((v) => v !== id) }));
   },
 
   activateTab(id) {
-    set({ activeTabId: id });
+    set((s) => ({
+      activeTabId: id,
+      visitedTabIds: s.visitedTabIds.includes(id) ? s.visitedTabIds : [...s.visitedTabIds, id],
+    }));
   },
 
   updateTabParams(id, params) {
@@ -151,6 +135,7 @@ export const useTabsStore = create<TabsStore>()(
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId,
+        visitedTabIds: state.visitedTabIds,
       }),
     }
   )

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 const baseStyle =
   "inline-flex items-center cursor-pointer justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-[color,transform]";
 
-const variantStyles = {
+export const variantStyles = {
   primary:
     "bg-surface-1 border border-border-gray-1 text-text-primary element-box-shadow",
   secondary: "bg-surface-2 border border-border-gray-2 text-text-primary",
@@ -27,6 +27,7 @@ export function Button({
   icon: IconComponent,
   iconButton = false,
   iconPosition = "left",
+  iconColor: iconColorProp,
 
   onAction,
 
@@ -37,8 +38,8 @@ export function Button({
   ...props
 }: ButtonProps) {
   const sizeStyles = {
-    sm: iconButton ? "h-9 w-9 p-0" : "h-9 w-fit min-w-22 px-3",
-    md: iconButton ? "h-10 w-10 p-0" : "h-10 w-fit min-w-22.5 px-3",
+    sm: iconButton ? "h-9 w-9 p-0" : "h-9 w-fit px-3",
+    md: iconButton ? "h-10 w-10 p-0" : "h-10 w-fit px-3",
   };
 
   const [internalState, setInternalState] = useState<ButtonStates>("idle");
@@ -60,7 +61,7 @@ export function Button({
     }, 400);
   };
 
-  const iconColor = variant === "brand" ? "white" : "muted";
+  const iconColor = iconColorProp ?? (variant === "brand" ? "white" : "primary");
 
   const buttonClassName = [
     baseStyle,

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useBible } from "@/hooks/useBible";
 import { fetchVerses } from "@/lib/bible.service";
-import { CVSelector, ChapterBlock } from "@components/bible";
-import { FeatureCover, FooterBlur, BookShader } from "@components/primitives";
+import { ChapterBlock, ReaderLeftPanel, ReaderRightPanel } from "@components/bible";
 import { useResourcesStore } from "@/stores/resources.store";
 import { useAnnotationStore } from "@/stores/annotation.store";
 import { useTabsStore } from "@/stores/tabs.store";
+import { useReaderUIStore } from "@/stores/readerUI.store";
 import type { Chapter, Verse } from "@/types";
 
 type ChapterVerses = { chapter: Chapter; verses: Verse[] };
@@ -145,9 +145,9 @@ export function Reader({ tabId, bookId }: ReaderProps) {
           const el = chapterRefs.current.get(target);
           if (!el) return;
           if (target === 1) {
-            el.closest("main")?.scrollTo({ top: 0, behavior: "instant" });
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
           } else {
-            el.scrollIntoView({ behavior: "instant" });
+            el.scrollIntoView({ behavior: "smooth" });
           }
         }, 50);
       })
@@ -199,12 +199,33 @@ export function Reader({ tabId, bookId }: ReaderProps) {
     const el = chapterRefs.current.get(n);
     if (!el) return;
     if (n === 1) {
-      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      el.scrollIntoView({ behavior: "instant" });
+      el.scrollIntoView({ behavior: "smooth" });
     }
     setActiveChapter(n);
   }
+
+  function scrollToVerse(chapter: number, verse: number) {
+    scrollToChapter(chapter);
+    setTimeout(() => {
+      const el = scrollContainerRef.current?.querySelector(
+        `[data-chapter="${chapter}"][data-verse="${verse}"]`
+      ) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }
+
+  const setReaderUI = useReaderUIStore((s) => s.setReaderUI);
+  const clearReaderUI = useReaderUIStore((s) => s.clearReaderUI);
+
+  useEffect(() => {
+    if (stableChapters.length === 0) return;
+    setReaderUI(stableChapters.map((c) => c.number), activeChapter, scrollToChapter);
+  }, [stableChapters, activeChapter]);
+
+  useEffect(() => () => clearReaderUI(), []);
+
   // Keyboard navigation — ← → switch books, Shift+↑↓ change chapter
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -237,61 +258,49 @@ export function Reader({ tabId, bookId }: ReaderProps) {
 
 
   return (
-    // Reader owns its own scroll — -mx-4 cancels AppLayout main's px-4 so
-    // absolute children anchor to the true card edge, not the padded content box.
-    <div className="relative h-full overflow-hidden -mx-4">
-      {/* Chapter TOC — absolute within the white card, bottom-right */}
-      <div className="absolute bottom-4 right-4 z-10">
-        <CVSelector
-          title="Chapters"
-          variant="md"
-          items={stableChapters.map((c) => c.number)}
-          selected={activeChapter}
-          onSelect={scrollToChapter}
-          className="max-h-[60vh] overflow-y-auto overflow-x-hidden"
-          collapsible
-          defaultCollapsed
-        />
+    <div className="flex h-full gap-4 pb-2 overflow-hidden">
+      {/* Left panel */}
+      <ReaderLeftPanel
+        bookId={book.id}
+        bookName={book.name}
+        verseTextMap={Object.fromEntries(
+          allChapterVerses.flatMap(({ chapter, verses }) =>
+            verses.map(v => [`${chapter.number}:${v.number}`, v.text])
+          )
+        )}
+        onScrollToVerse={scrollToVerse}
+      />
+
+      {/* Center: scrollable chapter content */}
+      <div ref={scrollContainerRef} className="flex-1 px-24 w-full min-w-250 h-full overflow-y-auto scrollbar-stable bg-white border border-border-gray-1 card-shadow rounded-2xl">
+        <div className="flex flex-col gap-8 mx-auto w-full pb-16">
+          {stableChapters.map((chapter) => {
+            const found = allChapterVerses.find((acv) => acv.chapter.id === chapter.id);
+            const cv = found?.verses ?? [];
+            return (
+              <div
+                key={chapter.id}
+                className="scroll-mt-8"
+                ref={(el) => {
+                  if (el) chapterRefs.current.set(chapter.number, el);
+                }}
+              >
+                <ChapterBlock
+                  bookId={book.id}
+                  chapterNumber={chapter.number}
+                  verses={cv}
+                  isActive={chapter.number === activeChapter}
+                  isLoading={isLoadingAll}
+                  isEmpty={!isLoadingAll && !!found && cv.length === 0}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Inner scroll container — the actual scrolling surface */}
-      <div ref={scrollContainerRef} className="h-full overflow-y-auto px-4 scrollbar-stable">
-      {/* Reading column — truly centered */}
-      <div className="flex flex-col gap-8 max-w-200 mx-auto w-full pb-16 pt-20">
-        {/* Book cover + title */}
-        <div className="flex flex-col">
-          <FeatureCover
-            type="bible"
-            title={book.name}
-            size="lg"
-            backgroundNode={<BookShader bookOrder={book.book_order} />}
-          />
-        </div>
-        {stableChapters.map((chapter) => {
-          const found = allChapterVerses.find((acv) => acv.chapter.id === chapter.id);
-          const cv = found?.verses ?? [];
-          return (
-            <div
-              key={chapter.id}
-              className="scroll-mt-8"
-              ref={(el) => {
-                if (el) chapterRefs.current.set(chapter.number, el);
-              }}
-            >
-              <ChapterBlock
-                bookId={book.id}
-                chapterNumber={chapter.number}
-                verses={cv}
-                isActive={chapter.number === activeChapter}
-                isLoading={isLoadingAll}
-                isEmpty={!isLoadingAll && !!found && cv.length === 0}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <FooterBlur />
-      </div> {/* end inner scroll container */}
+      {/* Right panel */}
+      <ReaderRightPanel bookId={book.id} chapterNumber={activeChapter} />
     </div>
   );
 }

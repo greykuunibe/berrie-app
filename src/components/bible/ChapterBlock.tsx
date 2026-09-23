@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { VerseBlock } from "./VerseBlock";
-import { TextSelectionToolbar, EmojiPicker } from "./TextSelectionToolbar";
+import { TextSelectionToolbar } from "./TextSelectionToolbar";
 import { EmptyState } from "@components/primitives";
 import { Bible } from "@Icons";
-import { useAnnotationStore, verseKey } from "@/stores/annotation.store";
-import type { HighlightColor } from "../TextSelectionToolbar";
+import { useAnnotationStore, verseKey, chapterKey } from "@/stores/annotation.store";
+import { toWords } from "@/lib/toWords";
+import { toast } from "@/lib/toast";
+import type { HighlightColor } from "./TextSelectionToolbar";
+import type { TextHighlight } from "./VerseBlock";
+import type { StoredHighlight } from "@/stores/annotation.store";
 import type { Verse } from "@/types";
 
 export interface ChapterBlockProps {
@@ -14,7 +18,6 @@ export interface ChapterBlockProps {
   verses: Verse[];
   isActive?: boolean;
   isLoading?: boolean;
-  /** Set to true only after the fetch completed and genuinely returned no verses */
   isEmpty?: boolean;
 }
 
@@ -32,24 +35,34 @@ function getAbsoluteOffset(container: Node, node: Node, offset: number): number 
   return total + offset;
 }
 
+// Projects chapter-level cross-verse highlights down to per-verse {start,end} slices
+function sliceHighlightsForVerse(
+  chapterHighlights: StoredHighlight[],
+  verseNum: number,
+  verseTextLength: number,
+): TextHighlight[] {
+  return chapterHighlights
+    .filter(h => h.fromVerse <= verseNum && h.toVerse >= verseNum)
+    .map(h => ({
+      start: h.fromVerse === verseNum ? h.fromOffset : 0,
+      end:   h.toVerse   === verseNum ? h.toOffset   : verseTextLength,
+      color: h.color,
+    }))
+    .filter(h => h.start < h.end);
+}
+
 export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty }: ChapterBlockProps) {
-  const { highlights, notes, reactions, addHighlight, removeHighlight, addNote, addReaction } =
-    useAnnotationStore();
+  const { highlights, notes, addHighlight, removeHighlight, addNote } = useAnnotationStore();
+
+  const chapterHighlights = highlights[chapterKey(bookId, chapterNumber)] ?? [];
 
   const verseTextRefs = useRef<Map<number, HTMLSpanElement>>(new Map());
   const skipNextMouseUp = useRef(false);
 
   const [activeSelection, setActiveSelection] = useState<{
     ranges: SelectionRange[];
-    rect: { top: number; left: number; width: number };
-  } | null>(null);
-
-  const [reactionPicker, setReactionPicker] = useState<{
-    verseNumber: number;
-    start: number;
-    end: number;
-    currentEmoji: string;
-    rect: DOMRect;
+    rect: { top: number; bottom: number; left: number; width: number };
+    text: string;
   } | null>(null);
 
   useEffect(() => {
@@ -96,7 +109,7 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
       if (!selectedRanges.length) return;
 
       const rect = range.getBoundingClientRect();
-      setActiveSelection({ ranges: selectedRanges, rect: { top: rect.top, left: rect.left, width: rect.width } });
+      setActiveSelection({ ranges: selectedRanges, rect: { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width }, text: sel.toString() });
     }
 
     document.addEventListener("mouseup", handleMouseUp);
@@ -108,25 +121,24 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
     window.getSelection()?.removeAllRanges();
   }
 
+  // Determine if the current selection sits entirely within a single existing highlight
   const overlappingColor: HighlightColor | null = activeSelection
     ? (() => {
-        const colors = activeSelection.ranges.map(r => {
-          const key = verseKey(bookId, chapterNumber, r.verseNumber);
-          return (highlights[key] ?? []).find(h => h.start < r.end && h.end > r.start)?.color ?? null;
-        });
-        const unique = [...new Set(colors.filter(Boolean))];
-        return unique.length === 1 ? (unique[0] as HighlightColor) : null;
+        if (!activeSelection.ranges.length) return null;
+        const first = activeSelection.ranges[0];
+        const last = activeSelection.ranges[activeSelection.ranges.length - 1];
+        const hl = chapterHighlights.find(h =>
+          h.fromVerse <= first.verseNumber && h.fromOffset <= first.start &&
+          h.toVerse >= last.verseNumber && h.toOffset >= last.end
+        );
+        return hl?.color ?? null;
       })()
     : null;
 
   return (
-    <div className="flex flex-col items-start mt-2 p-4 bg-surface-1 border border-border-gray-1 card-shadow rounded-2xl w-full max-w-212.5 min-h-[900px]">
-      <span
-        className={`font-alter-bridge text-[32px] leading-12.5 mb-4 ${
-          isActive ? "text-text-brand" : "text-text-muted"
-        }`}
-      >
-        Chapter {chapterNumber}
+    <div className="flex flex-col items-start p-4 w-full min-h-225">
+      <span className="text-[24px] w-full py-4 border-b border-border-gray-1 uppercase font-semibold mb-6">
+        Chapter {toWords(chapterNumber)}
       </span>
 
       <div className="flex flex-col gap-3 w-full flex-1">
@@ -151,48 +163,53 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
           : verses.map(v => {
               const vKey = verseKey(bookId, chapterNumber, v.number);
               return (
-                <VerseBlock
-                  key={v.id}
-                  number={v.number}
-                  text={v.text}
-                  highlights={highlights[vKey] ?? []}
-                  reactions={reactions[vKey] ?? []}
-                  hasNote={(notes[vKey]?.length ?? 0) > 0}
-                  onRegisterTextRef={el => {
-                    if (el) verseTextRefs.current.set(v.number, el);
-                    else verseTextRefs.current.delete(v.number);
-                  }}
-                  onReactionBadgeClick={(start, end, emoji, rect) =>
-                    setReactionPicker({ verseNumber: v.number, start, end, currentEmoji: emoji, rect })
-                  }
-                />
+                <div key={v.id} data-chapter={chapterNumber} data-verse={v.number}>
+                  <VerseBlock
+                    number={v.number}
+                    text={v.text}
+                    highlights={sliceHighlightsForVerse(chapterHighlights, v.number, v.text.length)}
+                    hasNote={(notes[vKey]?.length ?? 0) > 0}
+                    onRegisterTextRef={el => {
+                      if (el) verseTextRefs.current.set(v.number, el);
+                      else verseTextRefs.current.delete(v.number);
+                    }}
+                    onHighlightClick={(start, end, color, rect) => {
+                      // Find the cross-verse highlight that covers this click point
+                      const hl = chapterHighlights.find(h =>
+                        h.color === color &&
+                        h.fromVerse <= v.number && h.toVerse >= v.number &&
+                        (h.fromVerse < v.number || h.fromOffset <= start) &&
+                        (h.toVerse   > v.number || h.toOffset   >= end)
+                      );
+                      if (!hl) return;
+
+                      // Reconstruct the full multi-verse selection from the stored highlight
+                      const ranges: SelectionRange[] = [];
+                      for (let n = hl.fromVerse; n <= hl.toVerse; n++) {
+                        const verse = verses.find(vv => vv.number === n);
+                        if (!verse) continue;
+                        ranges.push({
+                          verseNumber: n,
+                          start: n === hl.fromVerse ? hl.fromOffset : 0,
+                          end:   n === hl.toVerse   ? hl.toOffset   : verse.text.length,
+                        });
+                      }
+
+                      const text = ranges
+                        .map(r => verses.find(vv => vv.number === r.verseNumber)?.text.slice(r.start, r.end) ?? "")
+                        .join(" ");
+
+                      setActiveSelection({
+                        ranges,
+                        rect: { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width },
+                        text,
+                      });
+                    }}
+                  />
+                </div>
               );
             })}
       </div>
-
-      {reactionPicker &&
-        createPortal(
-          <>
-            <div className="fixed inset-0 z-998" onClick={() => setReactionPicker(null)} />
-            <div
-              className="fixed z-999"
-              style={{
-                top: reactionPicker.rect.top - 8,
-                left: reactionPicker.rect.left + reactionPicker.rect.width / 2,
-                transform: "translate(-50%, -100%)",
-              }}
-            >
-              <EmojiPicker
-                activeEmoji={reactionPicker.currentEmoji}
-                onPick={emoji => {
-                  addReaction(bookId, chapterNumber, reactionPicker.verseNumber, reactionPicker.start, reactionPicker.end, emoji);
-                  setReactionPicker(null);
-                }}
-              />
-            </div>
-          </>,
-          document.body,
-        )}
 
       {activeSelection &&
         createPortal(
@@ -203,32 +220,40 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
               data-selection-toolbar
               onMouseDown={() => { skipNextMouseUp.current = true; }}
               style={{
-                top: activeSelection.rect.top - 48,
-                left: activeSelection.rect.left + activeSelection.rect.width / 2 - 157,
+                top: activeSelection.rect.bottom - 200,
+                left: Math.max(8, Math.min(
+                  window.innerWidth - 322,
+                  activeSelection.rect.left + activeSelection.rect.width / 2 - 157,
+                )),
               }}
             >
               <TextSelectionToolbar
                 activeColor={overlappingColor}
                 onHighlight={color => {
-                  activeSelection.ranges.forEach(r => {
-                    if (color === null) removeHighlight(bookId, chapterNumber, r.verseNumber, r.start, r.end);
-                    else addHighlight(bookId, chapterNumber, r.verseNumber, r.start, r.end, color);
-                  });
+                  const first = activeSelection.ranges[0];
+                  const last = activeSelection.ranges[activeSelection.ranges.length - 1];
+                  if (color === null) {
+                    removeHighlight(bookId, chapterNumber, first.verseNumber, first.start, last.verseNumber, last.end);
+                  } else {
+                    addHighlight(bookId, chapterNumber, first.verseNumber, first.start, last.verseNumber, last.end, color);
+                  }
                   dismiss();
                 }}
                 onSaveNote={noteText => {
                   const [r] = activeSelection.ranges;
                   addNote(bookId, chapterNumber, r.verseNumber, r.start, r.end, noteText);
+                  toast.success("Note saved");
                   dismiss();
                 }}
-                onAddReaction={emoji => {
-                  if (activeSelection.ranges.length === 1) {
-                    const [r] = activeSelection.ranges;
-                    addReaction(bookId, chapterNumber, r.verseNumber, r.start, r.end, emoji);
+                onClose={() => {
+                  const text = activeSelection?.text ?? "";
+                  if (text) {
+                    navigator.clipboard.writeText(text)
+                      .then(() => toast.success("Copied to clipboard"))
+                      .catch(() => toast.error("Failed to copy"));
                   }
                   dismiss();
                 }}
-                onClose={dismiss}
               />
             </div>
           </>,

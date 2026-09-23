@@ -81,9 +81,10 @@ export interface DbVerseHighlight {
   id: string;
   book_id: number;
   chapter_num: number;
-  verse_num: number;
-  start_off: number;
-  end_off: number;
+  from_verse_num: number;
+  from_off: number;
+  to_verse_num: number;
+  to_off: number;
   color: string;
   created_at: string;
 }

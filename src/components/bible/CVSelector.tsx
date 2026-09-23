@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ButtonTrigger } from "@components/primitives";
 
 // ── Variant config ────────────────────────────────────────────────────────────
@@ -40,6 +41,10 @@ export interface CVSelectorProps {
   collapsible?: boolean;
   /** Initial collapsed state when `collapsible` is true. Defaults to false. */
   defaultCollapsed?: boolean;
+  /** Which direction the collapsible panel opens. Defaults to "up". */
+  direction?: "up" | "down";
+  /** Label shown on the trigger button. Defaults to `title`. */
+  triggerLabel?: string;
 }
 
 export function CVSelector({
@@ -52,9 +57,13 @@ export function CVSelector({
   className,
   collapsible = false,
   defaultCollapsed = false,
+  direction = "up",
+  triggerLabel,
 }: CVSelectorProps) {
   const v = V[variant];
   const [open, setOpen] = useState(!defaultCollapsed);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   const cardClass = [
     "flex flex-col items-start",
@@ -114,18 +123,40 @@ export function CVSelector({
 
   // ── Collapsible mode ──────────────────────────────────────────────────────────
   if (collapsible) {
+    function handleToggle() {
+      if (!open && triggerRef.current) {
+        const r = triggerRef.current.getBoundingClientRect();
+        setPanelPos({
+          top: direction === "down" ? r.bottom + 8 : r.top - 8,
+          left: r.left + r.width / 2,
+        });
+      }
+      setOpen((s) => !s);
+    }
+
     return (
-      <div className="relative flex flex-col items-end">
-        <ButtonTrigger variant="brand" open={open} onClick={() => setOpen((s) => !s)}>
-          {title}
+      <div ref={triggerRef}>
+        <ButtonTrigger variant="secondary" open={open} onClick={handleToggle}>
+          {triggerLabel ?? title}
         </ButtonTrigger>
-        {open && (
-          <div className="absolute bottom-full right-0 mb-2 z-10">
-            <div className={cardClass}>
-              {!plain && <span className={v.title}>{title}</span>}
-              {grid}
+        {open && createPortal(
+          <>
+            <div className="fixed inset-0 z-998" onClick={() => setOpen(false)} />
+            <div
+              className="fixed z-999 -translate-x-1/2"
+              style={{
+                top: direction === "down" ? panelPos.top : undefined,
+                bottom: direction === "down" ? undefined : window.innerHeight - panelPos.top,
+                left: panelPos.left,
+              }}
+            >
+              <div className={cardClass}>
+                {!plain && <span className={v.title}>{title}</span>}
+                {grid}
+              </div>
             </div>
-          </div>
+          </>,
+          document.body
         )}
       </div>
     );

@@ -6,16 +6,14 @@ import type { DbVerseHighlight, DbVerseNote, DbVerseReaction } from "@/types";
 export async function fetchAnnotationsForChapter(bookId: number, chapterNumber: number) {
   const filter = { book_id: bookId, chapter_num: chapterNumber };
 
-  const [hlRes, noteRes, rxRes] = await Promise.all([
+  const [hlRes, noteRes] = await Promise.all([
     supabase.from("verse_highlights").select("*").match(filter).order("created_at"),
     supabase.from("verse_notes").select("*").match(filter).order("created_at"),
-    supabase.from("verse_reactions").select("*").match(filter).order("created_at"),
   ]);
 
   return {
     highlights: (hlRes.data ?? []) as DbVerseHighlight[],
     notes: (noteRes.data ?? []) as DbVerseNote[],
-    reactions: (rxRes.data ?? []) as DbVerseReaction[],
   };
 }
 
@@ -24,14 +22,17 @@ export async function fetchAnnotationsForChapter(bookId: number, chapterNumber: 
 export async function insertHighlight(
   bookId: number,
   chapterNum: number,
-  verseNum: number,
-  startOff: number,
-  endOff: number,
+  fromVerseNum: number,
+  fromOff: number,
+  toVerseNum: number,
+  toOff: number,
   color: string,
 ): Promise<DbVerseHighlight | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const { data, error } = await supabase
     .from("verse_highlights")
-    .insert({ book_id: bookId, chapter_num: chapterNum, verse_num: verseNum, start_off: startOff, end_off: endOff, color })
+    .insert({ user_id: user.id, book_id: bookId, chapter_num: chapterNum, from_verse_num: fromVerseNum, from_off: fromOff, to_verse_num: toVerseNum, to_off: toOff, color })
     .select()
     .single();
   if (error) { console.error("[annotation] insertHighlight", error); return null; }
@@ -53,9 +54,11 @@ export async function insertNote(
   endOff: number,
   content: string,
 ): Promise<DbVerseNote | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const { data, error } = await supabase
     .from("verse_notes")
-    .insert({ book_id: bookId, chapter_num: chapterNum, verse_num: verseNum, start_off: startOff, end_off: endOff, content })
+    .insert({ user_id: user.id, book_id: bookId, chapter_num: chapterNum, verse_num: verseNum, start_off: startOff, end_off: endOff, content })
     .select()
     .single();
   if (error) { console.error("[annotation] insertNote", error); return null; }
@@ -77,10 +80,12 @@ export async function upsertReaction(
   endOff: number,
   emoji: string,
 ): Promise<DbVerseReaction | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const { data, error } = await supabase
     .from("verse_reactions")
     .upsert(
-      { book_id: bookId, chapter_num: chapterNum, verse_num: verseNum, start_off: startOff, end_off: endOff, emoji },
+      { user_id: user.id, book_id: bookId, chapter_num: chapterNum, verse_num: verseNum, start_off: startOff, end_off: endOff, emoji },
       { onConflict: "book_id,chapter_num,verse_num,start_off,end_off" },
     )
     .select()

@@ -8,16 +8,18 @@ interface TopBarProps {
 
 export function TopBar({ left, center, right }: TopBarProps) {
   return (
-    <div className="flex items-center justify-between gap-4 pl-6 pr-8 py-2 bg-surface-1">
+    <div className="relative flex items-center justify-between gap-4 px-4 py-2 bg-surface-1">
       <div className="flex items-center gap-2 shrink-0">
         {left}
       </div>
       {center && (
-        <div className="flex items-center gap-2 flex-1 justify-center">
-          {center}
+        <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto">
+            {center}
+          </div>
         </div>
       )}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 ml-auto">
         {right}
       </div>
     </div>

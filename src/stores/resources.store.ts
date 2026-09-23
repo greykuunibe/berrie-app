@@ -27,7 +27,6 @@ interface ResourcesStore {
   lexiconEntry: Lexicon | null;
   lexiconResults: Lexicon[];
   activeTab: ResourceTab;
-  isPanelOpen: boolean;
   isLoading: boolean;
   isLoadingResources: boolean;
   error: string | null;
@@ -46,8 +45,6 @@ interface ResourcesStore {
   lookupLexicon: (strongsNumber: string) => Promise<void>;
   searchLexicon: (query: string, language?: "hebrew" | "greek") => Promise<void>;
   setActiveTab: (tab: ResourceTab) => void;
-  togglePanel: () => void;
-  setPanelOpen: (open: boolean) => void;
   clearError: () => void;
 
   crossRefs: CrossReference[];
@@ -80,7 +77,6 @@ export const useResourcesStore = create<ResourcesStore>()(
   lexiconEntry: null,
   lexiconResults: [],
   activeTab: "commentary",
-  isPanelOpen: false,
   isLoading: false,
   isLoadingResources: false,
   error: null,
@@ -112,8 +108,19 @@ export const useResourcesStore = create<ResourcesStore>()(
   },
 
   loadCommentaryForChapter: async (chapterId: number) => {
-    const { activeCommentaryId, commentaryCache } = get();
     set({ activeChapterId: chapterId });
+
+    // Ensure commentaries are loaded before proceeding
+    let { activeCommentaryId, commentaries } = get();
+    if (!commentaries.length) {
+      try {
+        const fetched = await fetchCommentaries();
+        activeCommentaryId = fetched[0]?.id ?? null;
+        set({ commentaries: fetched, activeCommentaryId });
+      } catch { /* non-fatal — proceed without commentary */ }
+    }
+
+    const { commentaryCache } = get();
 
     // Serve from cache immediately — no spinner, no blank state
     const cached = commentaryCache[chapterId];
@@ -141,9 +148,16 @@ export const useResourcesStore = create<ResourcesStore>()(
   },
 
   // Silent background prefetch — fills the cache without touching isLoadingCommentary
-  prefetchCommentaryForChapter: (chapterId: number) => {
-    const { activeCommentaryId, commentaryCache } = get();
-    if (commentaryCache[chapterId]) return; // already cached
+  prefetchCommentaryForChapter: async (chapterId: number) => {
+    let { activeCommentaryId, commentaries, commentaryCache } = get();
+    if (commentaryCache[chapterId]) return;
+    if (!commentaries.length) {
+      try {
+        const fetched = await fetchCommentaries();
+        activeCommentaryId = fetched[0]?.id ?? null;
+        set({ commentaries: fetched, activeCommentaryId });
+      } catch { return; }
+    }
     fetchCommentaryForChapter(chapterId, activeCommentaryId ?? undefined)
       .then(entries => {
         set(state => ({
@@ -224,29 +238,43 @@ export const useResourcesStore = create<ResourcesStore>()(
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
-  togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
-  setPanelOpen: (open) => set({ isPanelOpen: open }),
   clearError: () => set({ error: null }),
 
   isTranslationLocal: (id) => get().localTranslationIds.includes(id),
-  downloadTranslation: (id) =>
+  downloadTranslation: (id) => {
+    const { translations } = get();
+    const name = translations.find(t => t.id === id)?.abbreviation ?? "Translation";
     set(state => ({
       localTranslationIds: state.localTranslationIds.includes(id)
         ? state.localTranslationIds
         : [...state.localTranslationIds, id],
-    })),
-  removeTranslation: (id) =>
-    set(state => ({ localTranslationIds: state.localTranslationIds.filter(i => i !== id) })),
+    }));
+    import("@/lib/toast").then(({ toast }) => toast.success(`${name} available offline`));
+  },
+  removeTranslation: (id) => {
+    const { translations } = get();
+    const name = translations.find(t => t.id === id)?.abbreviation ?? "Translation";
+    set(state => ({ localTranslationIds: state.localTranslationIds.filter(i => i !== id) }));
+    import("@/lib/toast").then(({ toast }) => toast.info(`${name} removed from device`));
+  },
 
   isResourceLocal: (id) => get().localResourceIds.includes(id),
-  downloadResource: (id) =>
+  downloadResource: (id) => {
+    const { resources } = get();
+    const name = resources.find(r => r.id === id)?.name ?? "Resource";
     set(state => ({
       localResourceIds: state.localResourceIds.includes(id)
         ? state.localResourceIds
         : [...state.localResourceIds, id],
-    })),
-  removeResource: (id) =>
-    set(state => ({ localResourceIds: state.localResourceIds.filter(i => i !== id) })),
+    }));
+    import("@/lib/toast").then(({ toast }) => toast.success(`${name} available offline`));
+  },
+  removeResource: (id) => {
+    const { resources } = get();
+    const name = resources.find(r => r.id === id)?.name ?? "Resource";
+    set(state => ({ localResourceIds: state.localResourceIds.filter(i => i !== id) }));
+    import("@/lib/toast").then(({ toast }) => toast.info(`${name} removed from device`));
+  },
     }),
     {
       name: "berrie-resources",

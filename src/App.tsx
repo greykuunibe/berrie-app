@@ -7,13 +7,16 @@ import { UILibrary } from "@/pages/UILibrary";
 import { Auth } from "@/pages/Auth";
 import { RouteError } from "@/pages/RouteError";
 import { ErrorBoundary } from "@components/primitives/ErrorBoundary";
+import { supabase } from "@/lib/supabase";
 
 function Launcher() {
   const [destination, setDestination] = useState<string | null>(null);
 
-  if (!destination) {
-    setDestination("/app");
-  }
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setDestination(session ? "/app" : "/auth");
+    });
+  }, []);
 
   if (!destination) return null;
   return <Navigate to={destination} replace />;

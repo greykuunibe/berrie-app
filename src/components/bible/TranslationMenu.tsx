@@ -57,7 +57,7 @@ export function TranslationMenu() {
 
   return (
     <div ref={anchorRef}>
-      <ButtonTrigger open={open} onClick={handleToggle} width={76} >
+      <ButtonTrigger open={open} variant="secondary" onClick={handleToggle} width={76}>
         {activeTranslation?.abbreviation ?? "KJV"}
       </ButtonTrigger>
 
@@ -82,9 +82,7 @@ export function TranslationMenu() {
                 onRemove={() => removeTranslation(t.id)}
               />
             ))}
-            {hidden.length > 0 && (
-              <MenuItem label="More..." onClick={handleMore} />
-            )}
+            {hidden.length > 0 && <MenuItem label="More..." onClick={handleMore} />}
           </div>
           {moreOpen && (
             <div

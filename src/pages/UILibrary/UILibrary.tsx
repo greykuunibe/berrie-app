@@ -22,7 +22,6 @@ import {
   VerseBlock,
   ChapterBlock,
   TextSelectionToolbar,
-  EmojiPicker,
 } from "@components/bible";
 import { Check, Search, Bible, Notes, Settings } from "@Icons";
 
@@ -65,7 +64,7 @@ export function UILibrary() {
       <ComponentShowcase id="toggle-group" title="ToggleGroup">
         <div className="flex flex-col items-center gap-6">
           <ToggleGroup
-            variant="flat"
+            variant="toggle"
             value={toggleValue}
             onChange={setToggleValue}
             options={[
@@ -74,7 +73,7 @@ export function UILibrary() {
             ]}
           />
           <ToggleGroup
-            variant="elevated"
+            variant="toggle"
             value={toggleValue}
             onChange={setToggleValue}
             options={[
@@ -83,7 +82,8 @@ export function UILibrary() {
             ]}
           />
           <ToggleGroup
-            variant="icon"
+            variant="toggle"
+            iconOnly
             value={toggleValue}
             onChange={setToggleValue}
             options={[
@@ -233,14 +233,13 @@ export function UILibrary() {
       {/* ── VERSE BLOCK ────────────────────────────────────────────────────── */}
       <ComponentShowcase id="verse-block" title="VerseBlock">
         <div className="flex flex-col gap-2 w-full max-w-2xl">
-          <VerseBlock number={1} text="In the beginning God created the heaven and the earth." highlights={[]} reactions={[]} />
+          <VerseBlock number={1} text="In the beginning God created the heaven and the earth." highlights={[]} />
           <VerseBlock
             number={2}
             text="And the earth was without form, and void; and darkness was upon the face of the deep."
             highlights={[{ start: 4, end: 13, color: "yellow" }]}
-            reactions={[{ start: 4, end: 13, emoji: "🔥" }]}
           />
-          <VerseBlock number={3} text="And God said, Let there be light: and there was light." highlights={[]} reactions={[]} hasNote />
+          <VerseBlock number={3} text="And God said, Let there be light: and there was light." highlights={[]} hasNote />
         </div>
       </ComponentShowcase>
 
@@ -260,16 +259,8 @@ export function UILibrary() {
             activeColor={null}
             onHighlight={() => {}}
             onSaveNote={() => {}}
-            onAddReaction={() => {}}
             onClose={() => {}}
           />
-        </div>
-      </ComponentShowcase>
-
-      {/* ── EMOJI PICKER ───────────────────────────────────────────────────── */}
-      <ComponentShowcase id="emoji-picker" title="EmojiPicker">
-        <div className="flex items-center justify-center py-4">
-          <EmojiPicker activeEmoji={activeEmoji} onPick={setActiveEmoji} />
         </div>
       </ComponentShowcase>
 
