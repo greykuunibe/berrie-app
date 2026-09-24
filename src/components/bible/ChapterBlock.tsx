@@ -67,18 +67,21 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
 
   useEffect(() => {
     function handleMouseUp() {
+      console.log("[toolbar] mouseup fired, skipNext:", skipNextMouseUp.current);
       if (skipNextMouseUp.current) {
         skipNextMouseUp.current = false;
         return;
       }
 
       const sel = window.getSelection();
+      console.log("[toolbar] sel:", sel?.toString(), "collapsed:", sel?.isCollapsed);
       if (!sel || sel.isCollapsed) return;
 
       const range = sel.getRangeAt(0);
       const selectedRanges: SelectionRange[] = [];
 
       const sortedEntries = [...verseTextRefs.current.entries()].sort((a, b) => a[0] - b[0]);
+      console.log("[toolbar] verseTextRefs size:", verseTextRefs.current.size, "selectedRanges after loop:", selectedRanges.length);
 
       for (const [verseNum, textEl] of sortedEntries) {
         if (!textEl || !range.intersectsNode(textEl)) continue;
@@ -109,6 +112,7 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
       if (!selectedRanges.length) return;
 
       const rect = range.getBoundingClientRect();
+      console.log("[toolbar] rect:", { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width });
       setActiveSelection({ ranges: selectedRanges, rect: { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width }, text: sel.toString() });
     }
 
