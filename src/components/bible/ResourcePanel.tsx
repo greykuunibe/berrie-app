@@ -533,8 +533,12 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
     );
   }
 
-  // Don't block rendering while loading — show stale content + subtle top bar
+  // Full spinner when loading with no stale content to show
+  if (!commentaryEntries.length && isLoadingCommentary) {
+    return <Loading />;
+  }
 
+  // Not loading and nothing returned — chapter has no commentary
   if (!commentaryEntries.length) {
     return (
       <div className="flex flex-1 items-center justify-center py-16">
@@ -545,11 +549,6 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
         />
       </div>
     );
-  }
-
-  // Full spinner only when there's no stale content to show yet
-  if (!commentaryEntries.length && isLoadingCommentary) {
-    return <Loading />;
   }
 
   return (

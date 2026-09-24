@@ -1,15 +1,15 @@
 import { useEffect } from "react";
-import { useReaderUIStore } from "@/stores/readerUI.store";
 import { isTauri } from "@tauri-apps/api/core";
 import { WindowTitleBar } from "./WindowTitleBar";
 import { NavBreadcrumb } from "./NavBreadcrumb";
 import { TopBar } from "./TopBar";
 import { ProfilePill } from "./ProfilePill";
-import { ResourcesPanelContent, ResourcesPanelActions, TranslationMenu, CVSelector } from "@components/bible";
-import { GlobalSidePanel } from "./GlobalSidePanel";
+import { TranslationMenu } from "@components/bible";
 import { useSidePanelStore } from "@/stores/sidePanel.store";
-import { Button, FooterBlur, ToggleGroup, Toaster } from "@components/primitives";
+import { useReaderUIStore } from "@/stores/readerUI.store";
+import { Button, FooterBlur, Input, Toaster } from "@components/primitives";
 import { Search, Resources } from "@Icons";
+import { PanelLeft, PanelRight } from "lucide-react";
 import { useTabsStore } from "@/stores/tabs.store";
 import { Home } from "@/pages/Home";
 import { BibleLibrary } from "@/pages/BibleLibrary";
@@ -35,17 +35,6 @@ function TabContentRenderer({ tab }: { tab: Tab }) {
   }
 }
 
-// ── Reading controls (TopBar center, reader only) ─────────────────────────────
-
-function ReadingControls() {
-  const { chapters, activeChapter, onSelectChapter } = useReaderUIStore();
-  return (
-    <div className="flex items-center gap-2">
-      <TranslationMenu />
-      <CVSelector title="Chapters" triggerLabel={`Chapter ${activeChapter}`} variant="md" items={chapters} selected={activeChapter} onSelect={onSelectChapter} collapsible defaultCollapsed direction="down" />
-    </div>
-  );
-}
 
 // ── AppLayout ─────────────────────────────────────────────────────────────────
 
@@ -55,6 +44,7 @@ export function AppLayout() {
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const isReader = activeTab?.type === "reader";
+  const { leftPanelOpen, toggleLeftPanel } = useReaderUIStore();
 
   useEffect(() => {
     if (!isReader && panelContent !== null) closePanel();
@@ -64,17 +54,22 @@ export function AppLayout() {
     <>
       <Toaster />
       <WindowTitleBar />
-      <div className={`flex gap-2 px-2 w-full bg-surface-0 ${isTauri() ? "h-[calc(100vh-35px)] pb-2 pt-0 " : "h-screen py-2 "}`}>
+      <div className={`flex gap-2 w-full px-2 bg-surface-0 ${isTauri() ? "h-[calc(100vh-35px)] pb-2 pt-0 " : "h-screen py-2 "}`}>
         <div className="flex flex-col flex-1 min-w-0 bg-surface-1 border border-border-gray-1 rounded-2xl overflow-hidden">
           <TopBar
-            left={<NavBreadcrumb />}
-            center={isReader ? <ReadingControls /> : undefined}
+            left={
+              <div className="flex items-center gap-1">
+                {isReader && (
+                  <Button variant="ghost" size="sm" iconButton iconSize={18} icon={PanelLeft} iconColor={leftPanelOpen ? "primary" : "muted"} onClick={toggleLeftPanel} />
+                )}
+                <NavBreadcrumb />
+              </div>
+            }
+            center={<Input icon={Search} placeholder="Search…" className="min-w-96 " />}
             right={
               <>
-                <ToggleGroup variant="openMenu">
-                  <Button variant="ghost" size="sm" icon={Search} iconButton />
-                  {isReader && <Button variant="ghost" size="sm" icon={Resources} iconButton iconColor={panelContent === "resources" ? "brand" : "primary"} onClick={() => togglePanel("resources")} />}
-                </ToggleGroup>
+                {isReader && <TranslationMenu />}
+                {isReader && <Button variant="ghost" size="sm" icon={PanelRight} iconButton iconColor={panelContent === "resources" ? "brand" : "primary"} onClick={() => togglePanel("resources")} />}
                 <ProfilePill />
               </>
             }
@@ -91,10 +86,6 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Global side panel — sibling of main card, full height */}
-        <GlobalSidePanel actions={panelContent === "resources" ? <ResourcesPanelActions /> : undefined}>
-          {panelContent === "resources" && <ResourcesPanelContent />}
-        </GlobalSidePanel>
       </div>
     </>
   );

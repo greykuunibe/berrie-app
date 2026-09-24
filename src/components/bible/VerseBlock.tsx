@@ -23,6 +23,8 @@ export interface VerseBlockProps {
   text: string;
   highlights?: TextHighlight[];
   hasNote?: boolean;
+  searchQuery?: string;
+  searchRange?: { start: number; end: number };
   /** Callback to register the verse text span with ChapterBlock for selection detection */
   onRegisterTextRef?: (el: HTMLSpanElement | null) => void;
   /** Called when the user clicks an existing highlight mark */
@@ -73,9 +75,48 @@ export function VerseBlock({
   text,
   highlights = [],
   hasNote,
+  searchQuery,
+  searchRange,
   onRegisterTextRef,
   onHighlightClick,
 }: VerseBlockProps) {
+  function renderWithSearch() {
+    if (!searchQuery) return renderHighlightedText(text, highlights, onHighlightClick ?? (() => {}));
+
+    const q = searchQuery.toLowerCase();
+    const lower = text.toLowerCase();
+    const segments: { content: string; isFill: boolean; isMatch: boolean }[] = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const idx = lower.indexOf(q, cursor);
+      if (idx < 0) { segments.push({ content: text.slice(cursor), isFill: false, isMatch: false }); break; }
+      if (idx > cursor) segments.push({ content: text.slice(cursor, idx), isFill: false, isMatch: false });
+      const isFill = !!(searchRange && searchRange.start === idx && searchRange.end === idx + q.length);
+      segments.push({ content: text.slice(idx, idx + q.length), isFill, isMatch: true });
+      cursor = idx + q.length;
+    }
+
+    return (
+      <>
+        {segments.map((seg, i) =>
+          seg.isMatch ? (
+            <mark key={i} style={{
+              background: seg.isFill ? "#FEF08A" : "transparent",
+              border: "1.5px solid #FEF08A",
+              borderRadius: 3,
+              paddingInline: 1,
+            }}>
+              {seg.content}
+            </mark>
+          ) : (
+            <span key={i}>{seg.content}</span>
+          )
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="relative self-stretch flex items-baseline gap-1.5">
       <span className="text-xs font-medium leading-4 text-text-muted shrink-0 select-none cursor-default">
@@ -86,7 +127,7 @@ export function VerseBlock({
         ref={onRegisterTextRef}
         className="text-base font-medium leading-6.25 text-text-primary grow cursor-text"
       >
-        {renderHighlightedText(text, highlights, onHighlightClick ?? (() => {}))}
+        {renderWithSearch()}
       </span>
 
       {hasNote && (

@@ -3,89 +3,89 @@
 // ─────────────────────────────────────────────
 
 export {
-  DocumentTextIcon as Notes,
-  Square3Stack3DIcon as Resources,
-  MagnifyingGlassIcon as Search,
-  BookOpenIcon as Bible,
-  UserCircleIcon as Profile,
-  ChevronDownIcon as ChevronDown,
-  ChevronUpIcon as ChevronUp,
-  ChevronLeftIcon as ChevronLeft,
-  ChevronRightIcon as ChevronRight,
-} from "@heroicons/react/24/solid";
+  FileText as Notes,
+  Layers as Resources,
+  Search,
+  BookOpen as Bible,
+  CircleUser as Profile,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Actions
 // ─────────────────────────────────────────────
 
 export {
-  PlusIcon as Add,
-  PlusCircleIcon as AddCircle,
-  DocumentDuplicateIcon as Copy,
-  DocumentPlusIcon as AddNote,
-  DocumentTextIcon as Note,
-  ArrowUpOnSquareIcon as Share,
-  ArrowUpCircleIcon as Upload,
-  EllipsisHorizontalIcon as More,
-  InboxStackIcon as Downloads,
-  ArrowDownCircleIcon as Download,
-  TrashIcon as Delete,
-  CheckCircleIcon as Check,
-  CloudIcon as Cloud,
-  PaperClipIcon as Attachment,
-  PencilIcon as Edit,
-  StarIcon as Favorite,
-  MinusCircleIcon as Remove,
-  CameraIcon as Camera,
-  XCircleIcon as Close,
-  Cog6ToothIcon as Settings,
-  InformationCircleIcon as Info,
-  ArrowLeftStartOnRectangleIcon as SignOut,
-  EnvelopeIcon as Mail,
-} from "@heroicons/react/24/solid";
+  Plus as Add,
+  CirclePlus as AddCircle,
+  Copy,
+  FilePlus as AddNote,
+  Trash2 as Delete,
+  CircleCheck as Check,
+  Cloud,
+  Paperclip as Attachment,
+  Pencil as Edit,
+  Star as Favorite,
+  MinusCircle as Remove,
+  Camera,
+  XCircle as Close,
+  Settings,
+  Info,
+  LogOut as SignOut,
+  Mail,
+  Share2 as Share,
+  CircleArrowUp as Upload,
+  Ellipsis as More,
+  Inbox as Downloads,
+  CircleArrowDown as Download,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Layout
 // ─────────────────────────────────────────────
 
 export {
-  Squares2X2Icon as Grid,
-  Bars3Icon as Bars,
-  MinusIcon as Divider,
-  TableCellsIcon as Table,
-  MapIcon as Map,
-} from "@heroicons/react/24/solid";
+  LayoutGrid as Grid,
+  Menu as Bars,
+  Minus as Divider,
+  Table,
+  Map,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Bible / Study
 // ─────────────────────────────────────────────
 
 export {
-  ChatBubbleLeftRightIcon as Commentary,
-  BookOpenIcon as Lexicon,
-  PaintBrushIcon as Highlight,
-  LinkIcon as CrossRef,
-} from "@heroicons/react/24/solid";
+  MessageSquare as Commentary,
+  Highlighter as Highlight,
+  Link as CrossRef,
+} from "lucide-react";
+
+export { BookOpen as Lexicon } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Appearance
 // ─────────────────────────────────────────────
 
 export {
-  SunIcon as Light,
-  MoonIcon as Moon,
-  ComputerDesktopIcon as System,
-} from "@heroicons/react/24/solid";
+  Sun as Light,
+  Moon,
+  Monitor as System,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Account / Settings
 // ─────────────────────────────────────────────
 
 export {
-  UserIcon as Account,
-  CircleStackIcon as Storage,
-  ArrowPathIcon as Sync,
-} from "@heroicons/react/24/solid";
+  User as Account,
+  Database as Storage,
+  RefreshCw as Sync,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Editor / Text
@@ -93,7 +93,10 @@ export {
 
 export {
   Type as Text,
-  ListOrdered as OrderedList,
+  Type as FontDefault,
+  Type as FontSerif,
+  Braces as FontMono,
+  ListOrdered,
   List as UnorderedList,
   Bold,
   Underline,
@@ -107,9 +110,6 @@ export {
   Heading1 as H1,
   Heading2 as H2,
   Heading3 as H3,
-  Type as FontDefault,
-  Type as FontSerif,
-  Braces as FontMono,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
@@ -117,49 +117,48 @@ export {
 // ─────────────────────────────────────────────
 
 export {
-  BookmarkIcon as Concordance,
-  ClockIcon as Clock,
-  ArrowPathIcon as ProcessingInteraction,
-} from "@heroicons/react/24/solid";
+  Bookmark as Concordance,
+  Clock,
+} from "lucide-react";
 
-export { ChevronDoubleRightIcon as OpenPanel } from "@heroicons/react/24/solid";
-export { HomeIcon as Home } from "@heroicons/react/24/solid";
+export { RefreshCw as ProcessingInteraction } from "lucide-react";
+export { ChevronsRight as OpenPanel } from "lucide-react";
+export { Home } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Reactions
 // ─────────────────────────────────────────────
 
-export { FaceSmileIcon as FaceSmile } from "@heroicons/react/24/solid";
+export { Smile as FaceSmile } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Other
 // ─────────────────────────────────────────────
 
-export { HeartIcon as None } from "@heroicons/react/24/solid";
+export { Heart as None } from "lucide-react";
+export { FileText as Note } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Special controls
 // ─────────────────────────────────────────────
 
-export { ChevronDownIcon as SelectChevron } from "@heroicons/react/24/solid";
-
-export { XMarkIcon as XMark } from "@heroicons/react/24/solid";
+export { ChevronDown as SelectChevron } from "lucide-react";
+export { X as XMark } from "lucide-react";
+export { Binoculars } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Loader
 // ─────────────────────────────────────────────
 
-export { ArrowPathIcon as Loader } from "@heroicons/react/24/solid";
-export { SwatchIcon as Swatch } from "@heroicons/react/24/solid";
+export { Loader2 as Loader } from "lucide-react";
+export { Palette as Swatch } from "lucide-react";
 
 // ─────────────────────────────────────────────
-// Outline variants (for toolbars / lighter UI)
+// Outline variants
 // ─────────────────────────────────────────────
 
-export {
-  SwatchIcon as SwatchOutline,
-  DocumentPlusIcon as AddNoteOutline,
-  DocumentDuplicateIcon as CopyOutline,
-  ShareIcon as ShareOutline,
-  ArrowUpCircleIcon as UploadOutline,
-} from "@heroicons/react/24/outline";
+export { Palette as SwatchOutline } from "lucide-react";
+export { FilePlus as AddNoteOutline } from "lucide-react";
+export { Copy as CopyOutline } from "lucide-react";
+export { Share2 as ShareOutline } from "lucide-react";
+export { CircleArrowUp as UploadOutline } from "lucide-react";

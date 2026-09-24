@@ -12,7 +12,7 @@ export const variantStyles = {
   secondary: "bg-surface-2 border border-border-gray-2 text-text-primary",
   brand:
     "brand-gradient border border-border-brand text-white element-box-shadow",
-  ghost: "bg-transparent border border-transparent text-text-primary",
+  ghost: "bg-transparent border border-transparent text-text-primary hover:bg-surface-2",
 };
 
 const stateIcons = {
@@ -28,6 +28,7 @@ export function Button({
   iconButton = false,
   iconPosition = "left",
   iconColor: iconColorProp,
+  iconSize: iconSizeProp,
 
   onAction,
 
@@ -62,6 +63,7 @@ export function Button({
   };
 
   const iconColor = iconColorProp ?? (variant === "brand" ? "white" : "primary");
+  const iconSize = iconSizeProp ?? (size === "sm" ? 18 : 20);
 
   const buttonClassName = [
     baseStyle,
@@ -104,15 +106,15 @@ export function Button({
         className={`inline-flex items-center gap-1.5`}
       >
         {iconButton ? (
-          IconComponent && <Icon icon={IconComponent} color={iconColor} />
+          IconComponent && <Icon icon={IconComponent} color={iconColor} size={iconSize} />
         ) : (
           <>
             {IconComponent && iconPosition === "left" && (
-              <Icon icon={IconComponent} color={iconColor} />
+              <Icon icon={IconComponent} color={iconColor} size={iconSize} />
             )}
             {children}
             {IconComponent && iconPosition === "right" && (
-              <Icon icon={IconComponent} color={iconColor} />
+              <Icon icon={IconComponent} color={iconColor} size={iconSize} />
             )}
           </>
         )}

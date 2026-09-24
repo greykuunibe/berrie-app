@@ -6,6 +6,8 @@ const BIBLE = {
   /** Standard tall book cover — 320×420. */
   md: { w: 320, h: 420, r1: 24, r2: 20, r3: 16, pad: 4,  fs: 64, titleBottom: 80  },
   sm: { w: 110, h: 140, r1: 10, r2: 8,  r3: 6,  pad: 2,  fs: 32, titleBottom: 28  },
+  /** Compact panel cover — 64×82. */
+  xs: { w: 64,  h: 82,  r1: 6,  r2: 5,  r3: 3,  pad: 1,  fs: 18, titleBottom: 16  },
 } as const;
 
 const NOTE = {
@@ -45,12 +47,12 @@ export function FeatureCover({
   // ── Bible cover ─────────────────────────────────────────────────────────────
 
   if (type === "bible") {
-    const t = size === "sm" ? BIBLE.sm : size === "lg" ? BIBLE.lg : BIBLE.md;
+    const t = size === "xs" ? BIBLE.xs : size === "sm" ? BIBLE.sm : size === "lg" ? BIBLE.lg : BIBLE.md;
     const sizeKey = size ?? "fluid";
     const displayTitle = abbreviation && title.length > TITLE_MAX_LEN[sizeKey] ? abbreviation : title;
 
     // lg fills the container width (matches ChapterBlock behaviour).
-    // md/sm use fixed pixel dimensions. No size = fluid aspect-ratio mode.
+    // md/sm/xs use fixed pixel dimensions. No size = fluid aspect-ratio mode.
     const outerStyle: React.CSSProperties =
       size === "lg" ? { width: "100%", maxWidth: 850, height: t.h } :
       size ? { width: t.w, height: t.h } :
@@ -68,14 +70,14 @@ export function FeatureCover({
           borderRadius: t.r1,
           border: "1px solid #E7E5E4",
           padding: t.pad,
-          filter: size === "sm"
+          filter: (size === "sm" || size === "xs")
             ? undefined
             : "drop-shadow(0px 2px 4px rgba(0,0,0,0.04)) drop-shadow(0px 0px 0px rgba(0,0,0,0.06))",
-          boxShadow: size === "sm"
+          boxShadow: (size === "sm" || size === "xs")
             ? "0px 0.632911px 1.26582px rgba(0,0,0,0.04)"
             : undefined,
           cursor: onClick ? "pointer" : "default",
-          background: size === "sm" ? "#FAFAFA" : undefined,
+          background: (size === "sm" || size === "xs") ? "#FAFAFA" : undefined,
         }}
       >
         {/* Inner frame */}
@@ -83,7 +85,7 @@ export function FeatureCover({
           className="flex flex-1"
           style={{
             background: "#FAFAFA",
-            border: `${size === "sm" ? 0.316 : 1}px solid #E7E5E4`,
+            border: `${(size === "sm" || size === "xs") ? 0.316 : 1}px solid #E7E5E4`,
             borderRadius: t.r2,
             padding: t.pad,
             boxShadow: "0px 2px 4px rgba(0,0,0,0.04)",
@@ -94,7 +96,7 @@ export function FeatureCover({
             className="relative flex-1 overflow-hidden"
             style={{
               background: "#F5F5F4",
-              border: `${size === "sm" ? 0.316 : 1}px solid #E7E5E4`,
+              border: `${(size === "sm" || size === "xs") ? 0.316 : 1}px solid #E7E5E4`,
               borderRadius: t.r3,
               boxShadow: "0px 2px 4px rgba(0,0,0,0.04)",
             }}

@@ -19,6 +19,8 @@ export interface ChapterBlockProps {
   isActive?: boolean;
   isLoading?: boolean;
   isEmpty?: boolean;
+  searchQuery?: string;
+  searchMatch?: { verse: number; start: number; end: number };
 }
 
 type SelectionRange = { verseNumber: number; start: number; end: number };
@@ -51,7 +53,7 @@ function sliceHighlightsForVerse(
     .filter(h => h.start < h.end);
 }
 
-export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty }: ChapterBlockProps) {
+export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty, searchQuery, searchMatch }: ChapterBlockProps) {
   const { highlights, notes, addHighlight, removeHighlight, addNote } = useAnnotationStore();
 
   const chapterHighlights = highlights[chapterKey(bookId, chapterNumber)] ?? [];
@@ -140,7 +142,7 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
     : null;
 
   return (
-    <div className="flex flex-col items-start p-4 w-full min-h-225">
+    <div className={`flex flex-col items-start p-4 w-full${isLoading ? " h-full min-h-225" : ""}`}>
       <span className="text-[24px] w-full py-4 border-b border-border-gray-1 uppercase font-semibold mb-6">
         Chapter {toWords(chapterNumber)}
       </span>
@@ -173,6 +175,8 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
                     text={v.text}
                     highlights={sliceHighlightsForVerse(chapterHighlights, v.number, v.text.length)}
                     hasNote={(notes[vKey]?.length ?? 0) > 0}
+                    searchQuery={searchQuery}
+                    searchRange={searchMatch?.verse === v.number ? { start: searchMatch.start, end: searchMatch.end } : undefined}
                     onRegisterTextRef={el => {
                       if (el) verseTextRefs.current.set(v.number, el);
                       else verseTextRefs.current.delete(v.number);

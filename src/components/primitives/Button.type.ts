@@ -21,6 +21,7 @@ export interface ButtonProps extends HTMLMotionProps<"button"> {
   iconButton?: boolean;
   iconPosition?: ButtonIconPosition;
   iconColor?: IconColor;
+  iconSize?: number;
 
   state?: ButtonStates;
   onAction?: () => Promise<void>;

@@ -1,4 +1,5 @@
 export * from './Button';
+export * from './ConnectionError';
 export * from './ButtonGroup';
 export * from './Input';
 export * from './Icons';

@@ -107,19 +107,19 @@ export function ToggleGroup(props: ToggleGroupProps) {
               onClick={() => onChange(opt.value)}
               aria-hidden={hidden || undefined}
               tabIndex={hidden ? -1 : undefined}
-              className={`relative flex items-center justify-center gap-1.5 h-full px-3 rounded-full cursor-pointer select-none${hidden ? " hidden" : ""}${stretch ? " flex-1" : ""}`}
+              className={`relative flex items-center justify-center gap-1.5 h-full px-3 rounded-full cursor-pointer select-none ${hidden ? " hidden" : ""}${stretch ? " flex-1" : ""}`}
               style={{ minWidth: iconOnly ? "2.25rem" : undefined }}
             >
               {active && !hidden && (
                 <motion.span
                   layoutId={`${uid}-active-bg`}
-                  className="absolute inset-0 rounded-full bg-surface-3"
+                  className="absolute inset-0 element-box-shadow rounded-full bg-surface-1"
                   transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
                 />
               )}
-              <span className={`relative z-10 flex items-center gap-1.5 text-sm font-medium leading-none whitespace-nowrap ${active ? "text-text-brand" : "text-text-primary"}`}>
-                {opt.icon && !iconOnly && <Icon icon={opt.icon} size={14} color={active ? "brand" : "primary"} />}
-                {iconOnly && opt.icon && <Icon icon={opt.icon} size={16} color={active ? "brand" : "primary"} />}
+              <span className={`relative z-10 flex items-center gap-1.5 text-sm font-medium leading-none whitespace-nowrap ${active ? "text-text-primary" : "text-text-muted"}`}>
+                {opt.icon && !iconOnly && <Icon icon={opt.icon} size={14} color={active ? "primary" : "muted"} />}
+                {iconOnly && opt.icon && <Icon icon={opt.icon} size={16} color={active ? "primary" : "muted"} />}
                 {!iconOnly && opt.label}
               </span>
             </button>
@@ -151,7 +151,7 @@ export function ToggleGroup(props: ToggleGroupProps) {
       {moreOpen && hasOverflow && createPortal(
         <div
           data-more-menu=""
-          className="fixed z-[1001] flex flex-col gap-0.5 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl min-w-max"
+          className="fixed z-1001 flex flex-col gap-0.5 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl min-w-max"
           style={{ top: morePos.top, left: morePos.left }}
         >
           {overflowOptions.map(opt => {

@@ -30,7 +30,8 @@ export function TranslationMenu() {
   function handleToggle() {
     if (!open && anchorRef.current) {
       const r = anchorRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, left: r.left });
+      const panelW = 340; // w-85
+      setPos({ top: r.bottom + 4, left: Math.max(8, r.right - panelW) });
     }
     setOpen((v) => !v);
     setMoreOpen(false);

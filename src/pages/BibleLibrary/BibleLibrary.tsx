@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { EmptyState, ButtonTrigger, ToggleGroup } from "@components/primitives";
+import { EmptyState, ButtonTrigger, ToggleGroup, ConnectionError } from "@components/primitives";
 import { Menu } from "@components/primitives/Menu";
 import { MenuItem } from "@components/primitives/MenuItem";
 import { FeatureCover } from "@components/primitives";
@@ -34,7 +34,7 @@ const TESTAMENTS: Array<{ label: string; value: Testament }> = [
 // ── BibleLibrary ──────────────────────────────────────────────────────────────
 
 export function BibleLibrary() {
-  const { books, isLoadingBooks, selectBook, loadChapters } = useBible();
+  const { books, isLoadingBooks, error, loadBooks, selectBook, loadChapters } = useBible();
   const openTab = useTabsStore((s) => s.openTab);
   const addRecent = useRecentStore((s) => s.addRecent);
   const testament = useUIStore((s) => s.bibleLibraryTestament);
@@ -118,7 +118,11 @@ export function BibleLibrary() {
 
       {/* Book grid */}
       <div className="pb-16">
-        {isLoadingBooks ? null : filtered.length === 0 ? (
+        {error ? (
+          <div className="flex items-center justify-center py-32">
+            <ConnectionError onRetry={loadBooks} />
+          </div>
+        ) : isLoadingBooks ? null : filtered.length === 0 ? (
           <div className="flex items-center justify-center py-32">
             <EmptyState
               icon={Bible}

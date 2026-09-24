@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useBible } from "@/hooks/useBible";
 import { fetchVerses } from "@/lib/bible.service";
-import { ChapterBlock, ReaderLeftPanel, ReaderRightPanel } from "@components/bible";
+import { ChapterBlock, ReaderLeftPanel, ResourcesPanelContent, ResourcesPanelActions } from "@components/bible";
+import { ConnectionError } from "@components/primitives";
 import { useResourcesStore } from "@/stores/resources.store";
 import { useAnnotationStore } from "@/stores/annotation.store";
 import { useTabsStore } from "@/stores/tabs.store";
 import { useReaderUIStore } from "@/stores/readerUI.store";
+import { useSidePanelStore } from "@/stores/sidePanel.store";
 import type { Chapter, Verse } from "@/types";
 
 type ChapterVerses = { chapter: Chapter; verses: Verse[] };
@@ -31,6 +34,8 @@ export function Reader({ tabId, bookId }: ReaderProps) {
 
   const [allChapterVerses, setAllChapterVerses] = useState<ChapterVerses[]>([]);
   const [isLoadingAll, setIsLoadingAll] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [searchMatch, setSearchMatch] = useState<{ query: string; chapter: number; verse: number; start: number; end: number } | null>(null);
 
   // Never clears during transitions — bridges the window where the store resets chapters to []
   const [stableChapters, setStableChapters] = useState<Chapter[]>([]);
@@ -45,6 +50,9 @@ export function Reader({ tabId, bookId }: ReaderProps) {
   const [activeChapter, setActiveChapter] = useState<number>(Number(chParam));
   // Ref to the inner scroll container (not main — Reader owns its own scroll)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const panelOpen = useSidePanelStore((s) => s.content !== null);
+  const leftPanelOpen = useReaderUIStore((s) => s.leftPanelOpen);
+  const containerPx = panelOpen ? "3rem" : "6rem";
 
   const book = books.find((b) => b.id === Number(bookId));
 
@@ -61,6 +69,9 @@ export function Reader({ tabId, bookId }: ReaderProps) {
   stableChaptersRef.current = stableChapters;
   // Track the last chapter ID we triggered a load for to avoid duplicate concurrent fetches (B2)
   const lastCommentaryChapterRef = useRef<number | null>(null);
+  // Suppress IntersectionObserver updates during programmatic scrolls
+  const isScrollingProgrammatically = useRef(false);
+  const scrollLockTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   async function loadCommentaryForActive() {
     if (!activeChapter) return;
@@ -119,6 +130,7 @@ export function Reader({ tabId, bookId }: ReaderProps) {
 
     let cancelled = false;
     setIsLoadingAll(true);
+    setLoadError(false);
 
     Promise.all(
       chapters.map((ch) =>
@@ -155,6 +167,7 @@ export function Reader({ tabId, bookId }: ReaderProps) {
         if (cancelled) return;
         console.error("[Reader] failed to load verses:", err);
         setIsLoadingAll(false);
+        setLoadError(true);
       });
 
     return () => {
@@ -183,7 +196,9 @@ export function Reader({ tabId, bookId }: ReaderProps) {
             visibleChapters.current.delete(chNum);
           }
           const visible = [...visibleChapters.current];
-          if (visible.length > 0) setActiveChapter(Math.min(...visible));
+          if (visible.length > 0 && !isScrollingProgrammatically.current) {
+            setActiveChapter(Math.min(...visible));
+          }
         },
         { threshold: 0.01 },
       );
@@ -195,19 +210,48 @@ export function Reader({ tabId, bookId }: ReaderProps) {
   }, [allChapterVerses.length]);
 
 
-  function scrollToChapter(n: number) {
-    const el = chapterRefs.current.get(n);
-    if (!el) return;
-    if (n === 1) {
-      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-    setActiveChapter(n);
+  function chapterAtTop(): number | null {
+    const container = scrollContainerRef.current;
+    if (!container) return null;
+    const containerTop = container.getBoundingClientRect().top;
+    let best: number | null = null;
+    let bestDist = Infinity;
+    chapterRefs.current.forEach((el, chNum) => {
+      const dist = Math.abs(el.getBoundingClientRect().top - containerTop);
+      if (dist < bestDist) { bestDist = dist; best = chNum; }
+    });
+    return best;
   }
 
-  function scrollToVerse(chapter: number, verse: number) {
+  function scrollToChapter(n: number) {
+    isScrollingProgrammatically.current = true;
+    clearTimeout(scrollLockTimeout.current);
+
+    const container = scrollContainerRef.current;
+    const el = chapterRefs.current.get(n);
+    if (!container || !el) return;
+
+    if (n === 1) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      const containerTop = container.getBoundingClientRect().top;
+      const elTop = el.getBoundingClientRect().top;
+      const target = container.scrollTop + (elTop - containerTop) - 32; // 32px = scroll-mt-8
+      container.scrollTo({ top: target, behavior: "smooth" });
+    }
+    setActiveChapter(n);
+
+    scrollLockTimeout.current = setTimeout(() => {
+      setActiveChapter(chapterAtTop() ?? n);
+      isScrollingProgrammatically.current = false;
+    }, 1000);
+  }
+
+  function scrollToVerse(chapter: number, verse: number, match?: { query: string; start: number; end: number }) {
     scrollToChapter(chapter);
+    if (match) {
+      setSearchMatch({ query: match.query, chapter, verse, start: match.start, end: match.end });
+    }
     setTimeout(() => {
       const el = scrollContainerRef.current?.querySelector(
         `[data-chapter="${chapter}"][data-verse="${verse}"]`
@@ -258,49 +302,91 @@ export function Reader({ tabId, bookId }: ReaderProps) {
 
 
   return (
-    <div className="flex h-full gap-4 pb-2 overflow-hidden">
+    <div className="flex h-full pb-2 overflow-hidden">
       {/* Left panel */}
-      <ReaderLeftPanel
+      <AnimatePresence initial={false}>
+        {leftPanelOpen && (
+          <motion.div
+            key="left-panel"
+            initial={{ width: 0 }}
+            animate={{ width: "18rem" }}
+            exit={{ width: 0 }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+            className="shrink-0 overflow-hidden"
+          >
+        <ReaderLeftPanel
         bookId={book.id}
         bookName={book.name}
+        bookOrder={book.book_order}
+        chapterNumbers={stableChapters.map(c => c.number)}
         verseTextMap={Object.fromEntries(
           allChapterVerses.flatMap(({ chapter, verses }) =>
             verses.map(v => [`${chapter.number}:${v.number}`, v.text])
           )
         )}
+        currentChapter={activeChapter}
         onScrollToVerse={scrollToVerse}
+        onSearchClear={() => setSearchMatch(null)}
       />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Center: scrollable chapter content */}
-      <div ref={scrollContainerRef} className="flex-1 px-24 w-full min-w-250 h-full overflow-y-auto scrollbar-stable bg-white border border-border-gray-1 card-shadow rounded-2xl">
-        <div className="flex flex-col gap-8 mx-auto w-full pb-16">
-          {stableChapters.map((chapter) => {
-            const found = allChapterVerses.find((acv) => acv.chapter.id === chapter.id);
-            const cv = found?.verses ?? [];
-            return (
-              <div
-                key={chapter.id}
-                className="scroll-mt-8"
-                ref={(el) => {
-                  if (el) chapterRefs.current.set(chapter.number, el);
-                }}
-              >
-                <ChapterBlock
-                  bookId={book.id}
-                  chapterNumber={chapter.number}
-                  verses={cv}
-                  isActive={chapter.number === activeChapter}
-                  isLoading={isLoadingAll}
-                  isEmpty={!isLoadingAll && !!found && cv.length === 0}
-                />
-              </div>
-            );
-          })}
+      <div className="flex-1 h-full mx-4 overflow-hidden bg-white border border-border-gray-1 shadow-md rounded-3xl">
+        <div ref={scrollContainerRef} className="h-full overflow-y-auto scrollbar-none" style={{ paddingLeft: containerPx, paddingRight: containerPx }}>
+          {loadError ? (
+            <ConnectionError onRetry={() => { setLoadError(false); setIsLoadingAll(true); }} />
+          ) : null}
+          <div className="flex flex-col gap-8 max-w-220 mx-auto w-full pb-16">
+            {stableChapters.map((chapter) => {
+              const found = allChapterVerses.find((acv) => acv.chapter.id === chapter.id);
+              const cv = found?.verses ?? [];
+              return (
+                <div
+                  key={chapter.id}
+                  className="scroll-mt-8"
+                  ref={(el) => {
+                    if (el) chapterRefs.current.set(chapter.number, el);
+                  }}
+                >
+                  <ChapterBlock
+                    bookId={book.id}
+                    chapterNumber={chapter.number}
+                    verses={cv}
+                    isActive={chapter.number === activeChapter}
+                    isLoading={isLoadingAll}
+                    isEmpty={!isLoadingAll && !!found && cv.length === 0}
+                    searchQuery={searchMatch?.query}
+                    searchMatch={searchMatch?.chapter === chapter.number ? { verse: searchMatch.verse, start: searchMatch.start, end: searchMatch.end } : undefined}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Right panel */}
-      <ReaderRightPanel bookId={book.id} chapterNumber={activeChapter} />
+      {/* Resources right panel — inline, matches GlobalSidePanel motion */}
+      <AnimatePresence initial={false}>
+        {panelOpen && (
+          <motion.div
+            key="right-panel"
+            initial={{ width: 0 }}
+            animate={{ width: "40%" }}
+            exit={{ width: 0 }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+            className="shrink-0 h-full flex flex-col overflow-hidden mr-4 shadow-md rounded-3xl border border-border-gray-1 bg-surface-1"
+          >
+            <div className="flex items-center justify-center gap-1 px-3 py-2 shrink-0">
+              <ResourcesPanelActions />
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ResourcesPanelContent />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
