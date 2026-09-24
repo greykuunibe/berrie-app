@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode, type CSSProperties } from "react";
 import { toast } from "@/lib/toast";
 import { createPortal } from "react-dom";
 import { TextSelectionToolbar } from "@components/bible/TextSelectionToolbar";
@@ -36,9 +36,10 @@ function addHighlightRange(range: Range, color: HighlightColor) {
 interface SelectionContainerProps {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }
 
-export function SelectionContainer({ children, className }: SelectionContainerProps) {
+export function SelectionContainer({ children, className, style }: SelectionContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const skipNextMouseUp = useRef(false);
   const pendingRange = useRef<Range | null>(null);
@@ -91,6 +92,7 @@ export function SelectionContainer({ children, className }: SelectionContainerPr
     <div
       ref={containerRef}
       className={className}
+      style={style}
       onMouseUp={handleMouseUp}
     >
       {children}

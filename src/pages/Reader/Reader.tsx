@@ -51,6 +51,17 @@ export function Reader({ tabId, bookId }: ReaderProps) {
   // Ref to the inner scroll container (not main — Reader owns its own scroll)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const panelOpen = useSidePanelStore((s) => s.content !== null);
+  const commentaryVerseRanges = useResourcesStore((s) => panelOpen ? s.activeCommentaryVerseRanges : []);
+
+  // Sync chapter content scroll when commentary verse ranges change — scroll to topmost visible entry
+  useEffect(() => {
+    if (!commentaryVerseRanges.length || !panelOpen) return;
+    const topmost = commentaryVerseRanges.reduce((a, b) => a.from <= b.from ? a : b);
+    const el = scrollContainerRef.current?.querySelector(
+      `[data-chapter="${activeChapter}"][data-verse="${topmost.from}"]`
+    ) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [JSON.stringify(commentaryVerseRanges)]);
   const leftPanelOpen = useReaderUIStore((s) => s.leftPanelOpen);
   const containerPx = panelOpen ? "3rem" : "6rem";
 
@@ -77,22 +88,29 @@ export function Reader({ tabId, bookId }: ReaderProps) {
     if (!activeChapter) return;
     const chapter = stableChaptersRef.current.find((c) => c.number === activeChapter);
     if (!chapter) return;
-    // Deduplicate: skip if already loading this exact chapter
     if (lastCommentaryChapterRef.current === chapter.id) return;
     lastCommentaryChapterRef.current = chapter.id;
-    // B1 fix: ensure activeCommentaryId is set before fetching entries
-    if (!hasCommentaries) await loadCommentaries();
-    await loadCommentaryForChapter(chapter.id);
-    // Load cross-refs for the same chapter in parallel — data is ready before panel opens
-    if (book) void loadCrossRefsForChapter(book.id, activeChapter);
-    // Reset so the same chapter can reload if commentary selection changes
-    lastCommentaryChapterRef.current = null;
+    try {
+      if (!hasCommentaries) await loadCommentaries();
+      await loadCommentaryForChapter(chapter.id);
+      if (book) void loadCrossRefsForChapter(book.id, activeChapter);
+    } finally {
+      lastCommentaryChapterRef.current = null;
+    }
   }
 
   // Fire when stableChapters first become available (initial load)
   useEffect(() => {
     if (stableChapters.length) loadCommentaryForActive();
   }, [stableChapters.length]);
+
+  // Re-trigger when the resources panel opens so it always shows fresh data
+  useEffect(() => {
+    if (panelOpen && stableChapters.length) {
+      lastCommentaryChapterRef.current = null;
+      loadCommentaryForActive();
+    }
+  }, [panelOpen]);
 
   // Fire when the user scrolls to a different chapter
   useEffect(() => {
@@ -252,6 +270,7 @@ export function Reader({ tabId, bookId }: ReaderProps) {
     if (match) {
       setSearchMatch({ query: match.query, chapter, verse, start: match.start, end: match.end });
     }
+    if (verse <= 1) return;
     setTimeout(() => {
       const el = scrollContainerRef.current?.querySelector(
         `[data-chapter="${chapter}"][data-verse="${verse}"]`
@@ -333,12 +352,12 @@ export function Reader({ tabId, bookId }: ReaderProps) {
       </AnimatePresence>
 
       {/* Center: scrollable chapter content */}
-      <div className="flex-1 h-full mx-4 overflow-hidden bg-white border border-border-gray-1 shadow-md rounded-3xl">
+      <div className="flex-1 h-full mx-2 overflow-hidden bg-white border border-border-gray-1 shadow-md rounded-3xl">
         <div ref={scrollContainerRef} className="h-full overflow-y-auto scrollbar-none" style={{ paddingLeft: containerPx, paddingRight: containerPx }}>
           {loadError ? (
             <ConnectionError onRetry={() => { setLoadError(false); setIsLoadingAll(true); }} />
           ) : null}
-          <div className="flex flex-col gap-8 max-w-220 mx-auto w-full pb-16">
+          <div className="flex flex-col gap-8 max-w-200 mx-auto w-full pb-16">
             {stableChapters.map((chapter) => {
               const found = allChapterVerses.find((acv) => acv.chapter.id === chapter.id);
               const cv = found?.verses ?? [];
@@ -359,6 +378,7 @@ export function Reader({ tabId, bookId }: ReaderProps) {
                     isEmpty={!isLoadingAll && !!found && cv.length === 0}
                     searchQuery={searchMatch?.query}
                     searchMatch={searchMatch?.chapter === chapter.number ? { verse: searchMatch.verse, start: searchMatch.start, end: searchMatch.end } : undefined}
+                    commentaryVerseRanges={commentaryVerseRanges}
                   />
                 </div>
               );
@@ -372,16 +392,18 @@ export function Reader({ tabId, bookId }: ReaderProps) {
         {panelOpen && (
           <motion.div
             key="right-panel"
-            initial={{ width: 0 }}
-            animate={{ width: "40%" }}
-            exit={{ width: 0 }}
+            initial={{ maxWidth: 0 }}
+            animate={{ maxWidth: "35rem" }}
+            exit={{ maxWidth: 0 }}
             transition={{ type: "spring", duration: 0.35, bounce: 0 }}
-            className="shrink-0 h-full flex flex-col overflow-hidden mr-4 shadow-md rounded-3xl border border-border-gray-1 bg-surface-1"
+            className="relative flex-1 min-w-0 h-full overflow-hidden mr-2 shadow-md rounded-3xl border border-border-gray-1 bg-surface-1"
           >
-            <div className="flex items-center justify-center gap-1 px-3 py-2 shrink-0">
+            {/* Floating header */}
+            <div className="absolute top-0 inset-x-0 z-10 flex items-center px-3 py-2">
               <ResourcesPanelActions />
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            {/* Content fills full height */}
+            <div className="h-full overflow-hidden">
               <ResourcesPanelContent />
             </div>
           </motion.div>

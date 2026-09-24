@@ -8,7 +8,7 @@ import { TranslationMenu } from "@components/bible";
 import { useSidePanelStore } from "@/stores/sidePanel.store";
 import { useReaderUIStore } from "@/stores/readerUI.store";
 import { Button, FooterBlur, Input, Toaster } from "@components/primitives";
-import { Search, Resources } from "@Icons";
+import { Search } from "@Icons";
 import { PanelLeft, PanelRight } from "lucide-react";
 import { useTabsStore } from "@/stores/tabs.store";
 import { Home } from "@/pages/Home";
@@ -69,7 +69,7 @@ export function AppLayout() {
             right={
               <>
                 {isReader && <TranslationMenu />}
-                {isReader && <Button variant="ghost" size="sm" icon={PanelRight} iconButton iconColor={panelContent === "resources" ? "brand" : "primary"} onClick={() => togglePanel("resources")} />}
+                {isReader && <Button variant="ghost" size="sm" icon={PanelRight} iconButton iconColor={panelContent === "resources" ? "primary" : "muted"} onClick={() => togglePanel("resources")} />}
                 <ProfilePill />
               </>
             }

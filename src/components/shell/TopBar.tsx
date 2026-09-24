@@ -8,7 +8,7 @@ interface TopBarProps {
 
 export function TopBar({ left, center, right }: TopBarProps) {
   return (
-    <div className="relative flex items-center justify-between gap-4 px-4 py-2 bg-surface-1">
+    <div className="relative flex items-center justify-between gap-4 px-2 py-2 bg-surface-1">
       <div className="flex items-center gap-2 shrink-0">
         {left}
       </div>

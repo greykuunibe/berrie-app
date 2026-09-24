@@ -5,6 +5,7 @@ import { TextSelectionToolbar } from "./TextSelectionToolbar";
 import { EmptyState } from "@components/primitives";
 import { Bible } from "@Icons";
 import { useAnnotationStore, verseKey, chapterKey } from "@/stores/annotation.store";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { toWords } from "@/lib/toWords";
 import { toast } from "@/lib/toast";
 import type { HighlightColor } from "./TextSelectionToolbar";
@@ -21,6 +22,7 @@ export interface ChapterBlockProps {
   isEmpty?: boolean;
   searchQuery?: string;
   searchMatch?: { verse: number; start: number; end: number };
+  commentaryVerseRanges?: { from: number; to: number }[];
 }
 
 type SelectionRange = { verseNumber: number; start: number; end: number };
@@ -53,8 +55,16 @@ function sliceHighlightsForVerse(
     .filter(h => h.start < h.end);
 }
 
-export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty, searchQuery, searchMatch }: ChapterBlockProps) {
+export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoading, isEmpty, searchQuery, searchMatch, commentaryVerseRanges }: ChapterBlockProps) {
   const { highlights, notes, addHighlight, removeHighlight, addNote } = useAnnotationStore();
+  const { user } = useCurrentUser();
+
+  function requireAuth(action: () => void) {
+    if (user) { action(); return; }
+    toast.info("Sign in to save highlights and notes", {
+      action: { label: "Sign in", onClick: () => { window.location.hash = "/auth"; } },
+    });
+  }
 
   const chapterHighlights = highlights[chapterKey(bookId, chapterNumber)] ?? [];
 
@@ -169,7 +179,17 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
           : verses.map(v => {
               const vKey = verseKey(bookId, chapterNumber, v.number);
               return (
-                <div key={v.id} data-chapter={chapterNumber} data-verse={v.number}>
+                <div
+                  key={v.id}
+                  data-chapter={chapterNumber}
+                  data-verse={v.number}
+                  style={{
+                    opacity: commentaryVerseRanges?.length
+                      ? commentaryVerseRanges.some(r => v.number >= r.from && v.number <= r.to) ? 1 : 0.25
+                      : 1,
+                    transition: "opacity 0.3s ease",
+                  }}
+                >
                   <VerseBlock
                     number={v.number}
                     text={v.text}
@@ -242,16 +262,21 @@ export function ChapterBlock({ bookId, chapterNumber, verses, isActive, isLoadin
                   const last = activeSelection.ranges[activeSelection.ranges.length - 1];
                   if (color === null) {
                     removeHighlight(bookId, chapterNumber, first.verseNumber, first.start, last.verseNumber, last.end);
+                    dismiss();
                   } else {
-                    addHighlight(bookId, chapterNumber, first.verseNumber, first.start, last.verseNumber, last.end, color);
+                    requireAuth(() => {
+                      addHighlight(bookId, chapterNumber, first.verseNumber, first.start, last.verseNumber, last.end, color);
+                      dismiss();
+                    });
                   }
-                  dismiss();
                 }}
                 onSaveNote={noteText => {
-                  const [r] = activeSelection.ranges;
-                  addNote(bookId, chapterNumber, r.verseNumber, r.start, r.end, noteText);
-                  toast.success("Note saved");
-                  dismiss();
+                  requireAuth(() => {
+                    const [r] = activeSelection.ranges;
+                    addNote(bookId, chapterNumber, r.verseNumber, r.start, r.end, noteText);
+                    toast.success("Note saved");
+                    dismiss();
+                  });
                 }}
                 onClose={() => {
                   const text = activeSelection?.text ?? "";

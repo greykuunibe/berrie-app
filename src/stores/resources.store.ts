@@ -27,6 +27,9 @@ interface ResourcesStore {
   lexiconEntry: Lexicon | null;
   lexiconResults: Lexicon[];
   activeTab: ResourceTab;
+  /** All commentary verse ranges currently visible in the panel */
+  activeCommentaryVerseRanges: { from: number; to: number }[];
+  setActiveCommentaryVerseRanges: (ranges: { from: number; to: number }[]) => void;
   isLoading: boolean;
   isLoadingResources: boolean;
   error: string | null;
@@ -77,6 +80,8 @@ export const useResourcesStore = create<ResourcesStore>()(
   lexiconEntry: null,
   lexiconResults: [],
   activeTab: "commentary",
+  activeCommentaryVerseRanges: [],
+  setActiveCommentaryVerseRanges: (ranges) => set({ activeCommentaryVerseRanges: ranges }),
   isLoading: false,
   isLoadingResources: false,
   error: null,
@@ -138,7 +143,10 @@ export const useResourcesStore = create<ResourcesStore>()(
       );
       set(state => ({
         commentaryEntries: entries,
-        commentaryCache: { ...state.commentaryCache, [chapterId]: entries },
+        // Only cache non-empty results — empty may be a transient failure or filter mismatch
+        commentaryCache: entries.length > 0
+          ? { ...state.commentaryCache, [chapterId]: entries }
+          : state.commentaryCache,
         isLoadingCommentary: false,
       }));
     } catch (err) {

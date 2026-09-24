@@ -45,7 +45,7 @@ export function ResourceCard({
   }
 
   const cardClass = [
-    "flex flex-row items-center gap-4 rounded-lg w-full py-1 pl-1 pr-2",
+    "flex flex-row items-center gap-2 rounded-lg w-full py-1 pl-1 pr-2",
     variant === "elevated"
       ? "bg-surface-1 border border-border-gray-1 element-box-shadow"
       : "bg-surface-1 hover:bg-surface-0 transition-colors",
@@ -55,15 +55,15 @@ export function ResourceCard({
     <>
       <div className={`${cardClass} cursor-pointer`} onClick={onSelect}>
         {/* Abbreviation badge */}
-        <div className="flex flex-col justify-center items-center w-[42px] h-[42px] shrink-0 overflow-hidden bg-surface-1 border border-border-gray-1 element-box-shadow rounded-[4px]">
-          <span className="text-xs leading-4 text-text-muted font-normal w-full text-center truncate px-0.5">
+        <div className={`flex flex-col justify-center items-center w-10.5 h-10.5 shrink-0 overflow-hidden border element-box-shadow rounded-md ${isSelected ? "brand-gradient border-border-brand" : "bg-surface-0 border-border-gray-1"}`}>
+          <span className={`text-xs leading-4 font-medium w-full text-center truncate px-0.5 ${isSelected ? "text-text-inverted" : "text-text-muted"}`}>
             {abbr}
           </span>
         </div>
 
         {/* Description */}
         <div className="flex flex-col justify-center items-start flex-1 min-w-0">
-          <span className="text-sm leading-[18px] text-text-primary truncate w-full">{title}</span>
+          <span className="text-sm leading-4.5 text-text-primary truncate w-full">{title}</span>
           {subtitle && (
             <span className="text-xs leading-4 text-text-muted truncate w-full">{subtitle}</span>
           )}

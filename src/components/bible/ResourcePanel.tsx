@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
-import { Button, ButtonTrigger, ResourceCard, EmptyState, Loading, ToggleGroup } from "@components/primitives";
+import { ButtonTrigger, ResourceCard, EmptyState, Loading, ToggleGroup } from "@components/primitives";
 import { SelectionContainer } from "./SelectionContainer";
 import { Icon } from "@components/primitives/Icons";
 import { Input } from "@components/primitives";
@@ -343,7 +343,7 @@ function VerseRefPopover({
   return createPortal(
     <div
       data-verse-popover="true"
-      className="fixed z-2000 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl p-4 w-80 max-w-[90vw]"
+      className="fixed z-2000 bg-surface-0 border border-border-gray-1 element-box-shadow rounded-xl p-4 w-80 max-w-[90vw]"
       style={{ top, left, transform: "translate(-50%, calc(-100% - 8px))" }}
     >
       <p className="text-xs font-semibold text-text-brand mb-2">{refText}</p>
@@ -363,13 +363,17 @@ function VerseRefPopover({
 
 type PanelTab = "commentary" | "concordance" | "lexicon";
 
-const TABS: { value: PanelTab; label: string }[] = [
-  { value: "commentary",  label: "Commentary" },
-  { value: "concordance", label: "Cross-refs"  },
-  { value: "lexicon",     label: "Lexicons"    },
+const TABS: { value: PanelTab; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[] = [
+  { value: "commentary",  label: "Commentary", icon: Commentary },
+  { value: "concordance", label: "Cross-refs",  icon: CrossRef  },
+  { value: "lexicon",     label: "Lexicons",   icon: Lexicon   },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function stripSuffix(name: string): string {
+  return name.replace(/\s+commentary$/i, "").trim();
+}
 
 function deriveAbbr(name: string): string {
   const words = name.split(/\s+/).filter(w => w.length > 2);
@@ -398,15 +402,15 @@ function ResourceSelectorMenu({
     <>
       <div className="fixed inset-0 z-1000" onClick={onClose} />
       <div
-        className="fixed z-1001 flex flex-col gap-1 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-80 max-h-80 overflow-y-auto"
+        className="fixed z-1001 flex flex-col gap-1 p-1 bg-surface-1 border border-border-gray-1 element-box-shadow rounded-xl w-80 max-h-80 overflow-y-auto scrollbar-none"
         style={{ top: pos.top, left: pos.left }}
       >
         {items.map(r => (
           <ResourceCard
             key={r.id}
             abbr={deriveAbbr(r.name)}
-            title={r.name}
-            subtitle={r.description ?? r.license ?? undefined}
+            title={stripSuffix(r.name)}
+            subtitle={r.license ?? undefined}
             isSelected={r.id === selectedId}
             isLocal={isResourceLocal(r.id)}
             onSelect={() => { onSelect(r.id); onClose(); }}
@@ -450,9 +454,35 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
   const activeCommentaryId = useResourcesStore(s => s.activeCommentaryId);
   const commentaries       = useResourcesStore(s => s.commentaries);
   const resources          = useResourcesStore(s => s.resources);
+  const setVerseRanges     = useResourcesStore(s => s.setActiveCommentaryVerseRanges);
 
   const contentWrapRef = useRef<HTMLDivElement>(null);
+  const entryRefs      = useRef<Map<number, HTMLElement>>(new Map());
   const closeTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track all commentary entries currently visible and expose their verse ranges
+  useEffect(() => {
+    if (!entryRefs.current.size) return;
+
+    const observer = new IntersectionObserver(
+      () => {
+        const visible: { from: number; to: number }[] = [];
+        entryRefs.current.forEach((el, idx) => {
+          const entry = commentaryEntries[idx];
+          if (!entry || entry.from_verse == null) return;
+          const rect = el.getBoundingClientRect();
+          if (rect.top < window.innerHeight && rect.bottom > 0) {
+            visible.push({ from: entry.from_verse, to: entry.to_verse ?? entry.from_verse });
+          }
+        });
+        setVerseRanges(visible);
+      },
+      { threshold: 0 }
+    );
+
+    entryRefs.current.forEach(el => observer.observe(el));
+    return () => { observer.disconnect(); setVerseRanges([]); };
+  }, [commentaryEntries]);
   const [popover, setPopover] = useState<{
     refText: string; text: string | null; loading: boolean; top: number; left: number;
   } | null>(null);
@@ -520,6 +550,11 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
   const activeCommentary = commentaries.find(c => c.id === activeCommentaryId);
   const activeResource   = resources.find(r => r.id === activeCommentary?.resource_id);
 
+  // Show spinner while commentaries metadata is still being fetched
+  if (!hasCommentaryResources && isLoadingCommentary) {
+    return <Loading />;
+  }
+
   if (!hasCommentaryResources) {
     return (
       <div className="flex flex-1 items-center justify-center py-16">
@@ -557,14 +592,17 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
         <VerseRefPopover {...popover} />
       )}
       {activeResource && (
-        <div className="flex flex-col gap-0 pb-4">
-          <p className="text-2xl font-semibold text-text-primary leading-tight">{activeResource.name}</p>
-          <div className="flex items-center gap-4 flex-wrap mt-3">
+        <div className="flex flex-col pb-8 border-b-2 border-dashed border-border-gray-1">
+          <p className="text-2xl uppercase mb-8 font-semibold text-text-primary leading-tight">{stripSuffix(activeResource.name)}</p>
+          <div className="flex items-start divide-x divide-border-gray-1">
             {activeCommentary?.author && (
-              <span className="flex items-center gap-1.5 text-xs text-text-muted">
-                <Icon icon={Account} size={12} color="muted" />
-                {activeCommentary.author}
-              </span>
+              <div className="flex flex-col gap-1 pr-4">
+                <span className="text-xs font-medium text-text-muted">Author</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium text-text-primary">
+                  <Icon icon={Account} size={18} color="muted" />
+                  {activeCommentary.author}
+                </span>
+              </div>
             )}
             {(() => {
               const totalWords = commentaryEntries.reduce((acc, e) => {
@@ -573,17 +611,23 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
               }, 0);
               const minutes = Math.max(1, Math.ceil(totalWords / 200));
               return (
-                <span className="flex items-center gap-1.5 text-xs text-text-muted">
-                  <Icon icon={Clock} size={12} color="muted" />
-                  {minutes} min read
-                </span>
+                <div className="flex flex-col gap-1 px-4">
+                  <span className="text-xs font-medium text-text-muted">Read time</span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-text-primary">
+                    <Icon icon={Clock} size={18} color="muted" />
+                    {minutes} min
+                  </span>
+                </div>
               );
             })()}
             {activeResource.license && (
-              <span className="flex items-center gap-1.5 text-xs text-text-muted">
-                <Icon icon={Info} size={12} color="muted" />
-                {activeResource.license}
-              </span>
+              <div className="flex flex-col gap-1 pl-4">
+                <span className="text-xs font-medium text-text-muted">License</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium text-text-primary">
+                  <Icon icon={Info} size={18} color="muted" />
+                  {activeResource.license}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -599,14 +643,14 @@ function CommentaryContent({ hasCommentaryResources }: { hasCommentaryResources:
         const processed = prepareContent(entry.content);
 
         return (
-          <section key={entry.id}>
+          <section key={entry.id} ref={el => { if (el) entryRefs.current.set(idx, el); else entryRefs.current.delete(idx); }}>
             {verseLabel && (
-              <p className="text-base font-semibold text-text-primary mb-3">
+              <p className="text-sm font-medium text-text-muted mb-3">
                 {verseLabel}
               </p>
             )}
             <div
-              className="commentary-content text-[17px] text-text-primary leading-8
+              className="commentary-content text-base font-medium text-text-primary leading-8
                 [&_p]:mb-5 [&_p:last-child]:mb-0
                 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:mb-3
                 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2
@@ -875,10 +919,10 @@ export function ResourcesPanelContent() {
 
   return (
     <div
-      className="flex flex-col items-center gap-4 p-3 w-full h-full"
+      className="flex flex-col items-center w-full h-full"
     >
       {/* Content — always shows resource content, never a library list */}
-      <SelectionContainer className="flex flex-col flex-1 w-full overflow-y-auto gap-6 px-2">
+      <SelectionContainer className="flex flex-col flex-1 w-full overflow-y-auto gap-6 scrollbar-none" style={{ paddingLeft: "clamp(1.5rem, 8%, 3rem)", paddingRight: "clamp(1.5rem, 8%, 3rem)", paddingTop: "3.5rem", paddingBottom: "1.5rem" }}>
         {activeTab === "commentary" && (
           <CommentaryContent hasCommentaryResources={hasCommentaryResources} />
         )}
@@ -900,17 +944,57 @@ export function ResourcesPanelContent() {
   );
 }
 
-// ── ResourcesPanelActions — rendered in GlobalSidePanel header center slot ────
+// ── ResourcesPanelActions — full-width header row ──────────────────────────────
 
 export function ResourcesPanelActions() {
-  const { activeTab, setActiveTab } = useResourcesStore();
+  const { activeTab, setActiveTab, resources, commentaries, activeCommentaryId, setActiveCommentary } = useResourcesStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const commentaryResources = resources.filter(r => r.type === "commentary");
+  const activeCommentary    = commentaries.find(c => c.id === activeCommentaryId);
+  const activeResource      = resources.find(r => r.id === activeCommentary?.resource_id);
+  const activeResourceId    = activeCommentary?.resource_id ?? null;
+
+  function handleTrigger() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: r.bottom + 6, left: r.right - 320 });
+    }
+    setMenuOpen(v => !v);
+  }
+
+  function handleSelect(resourceId: number) {
+    const commentary = commentaries.find(c => c.resource_id === resourceId);
+    if (commentary) setActiveCommentary(commentary.id);
+  }
 
   return (
-    <ToggleGroup
-      variant="toggle"
-      value={activeTab ?? "commentary"}
-      onChange={(v) => setActiveTab(v as any)}
-      options={TABS.map((t) => ({ label: t.label, value: t.value }))}
-    />
+    <div className="flex items-center justify-between w-full gap-2">
+      <ToggleGroup
+        variant="toggle"
+        value={activeTab ?? "commentary"}
+        onChange={(v) => setActiveTab(v as any)}
+        options={TABS.map((t) => ({ label: t.label, value: t.value, icon: t.icon }))}
+        iconOnly
+      />
+      {activeTab === "commentary" && commentaryResources.length > 0 && (
+        <div ref={triggerRef}>
+          <ButtonTrigger variant="primary" open={menuOpen} onClick={handleTrigger}>
+            {activeResource ? stripSuffix(activeResource.name).slice(0, 14) : "Select"}
+          </ButtonTrigger>
+          {menuOpen && (
+            <ResourceSelectorMenu
+              items={commentaryResources}
+              selectedId={activeResourceId}
+              onSelect={handleSelect}
+              onClose={() => setMenuOpen(false)}
+              pos={menuPos}
+            />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
